@@ -2,24 +2,30 @@
 
 [Singer](https://www.singer.io/) tap that extracts data from a [NetSuite](https://www.netsuite.com/) database and produces JSON-formatted data following the [Singer spec](https://github.com/singer-io/getting-started/blob/master/SPEC.md).
 
+# How to use it
+tap-netsuite works together with any other Singer Target to move data from NetSuite to any target destination.
+
+
+## Install and run
+
+First, make sure Python 3 is installed on your system or follow these
+installation instructions for [Mac](http://docs.python-guide.org/en/latest/starting/install3/osx/) or
+[Ubuntu](https://www.digitalocean.com/community/tutorials/how-to-install-python-3-and-set-up-a-local-programming-environment-on-ubuntu-16-04).
+
+It's recommended to use a virtualenv:
+
 ```bash
-$ python3 -m venv env/tap-netsuite
-$ source env/tap-netsuite/bin/activate
-$ pip install .
-$ tap-netsuite --config config.json --discover
-$ tap-netsuite --config config.json --properties properties.json --state state.json
+ python3 -m venv ~/.virtualenvs/tap-netsuite/
+ source ~/.virtualenvs/tap-netsuite/bin/activate
+ pip install -upgrade pip
+ pip install -e .
 ```
 
-# Quickstart
 
-## Install the tap
-
-```
-> pip install tap-netsuite
-```
-
-## Create a Config file
+## Configuration
 #### Token Based Authentication
+
+Here is an example of basic config, and a bit of a run down on each of the properties:
 ```
 {
   "ns_account":"netsuite_account_id",
@@ -32,28 +38,54 @@ $ tap-netsuite --config config.json --properties properties.json --state state.j
   "start_date": "2019-09-02T00:00:00Z"
 }
 ```
-The `ns_account` is your account Id. This can be found under Setup -> Company -> Company Information. Look for Account Id. Note "_SB" is for Sandbox account.
+- **ns_account**(_required_): The NetSuite account id. his can be found under Setup -> Company -> Company Information. Look for Account Id. Note "_SB" is for the Sandbox account.
 
-The `ns_consumer_key`, `ns_consumer_secret`, `ns_token_key` and `ns_token_secret` keys are your TBA Authentication keys for SOAP connection. Visit the [NetSuite documentation](https://support.cazoomi.com/hc/en-us/articles/360010093392-How-to-Setup-NetSuite-Token-Based-Authentication-as-Authentication-Type).
 
-The `start_date` is used by the tap as a bound on SOAP requests when searching for records.  This should be an [RFC3339](https://www.ietf.org/rfc/rfc3339.txt) formatted date-time, like "2018-01-08T00:00:00Z". For more details, see the [Singer best practices for dates](https://github.com/singer-io/getting-started/blob/master/BEST_PRACTICES.md#dates).
+- **ns_consumer_key**(_required_): The consumer key for the integration. This can be found while creating new integration under Setup -> Integrations -> Manage Integrations -> New (Please save it while creating integration as it’s available only for the first time).
 
-The `is_sandbox` should always be set to "true" if you are connecting Production account of NetSuite. Set it to false if you want to connect to SandBox acccount. 
 
-When new fields are discovered in NetSuite objects, the `select_fields_by_default` key describes whether or not the tap will select those fields by default.
+- **ns_consumer_secret**(_required_): The consumer secret for the integration. This can be found while creating new integration under Setup -> Integrations -> Manage Integrations -> New (Please save it while creating integration as it’s available only for the first time).
 
-## Run Discovery
 
-To run discovery mode, execute the tap with the config file.
+- **ns_token_key**(_required_): The token key found while creating a new token under Setup -> Users/Roles -> Access Tokens -> New (Please save it while creating a token as it’s available only for the first time).
+
+
+- **ns_token_secret**(_required_): The token secret found while creating a new token under Setup -> Users/Roles -> Access Tokens -> New (Please save it while creating a token as it’s available only for the first time).
+
+
+- **select_fields_by_default**(_required_): Describes whether or not the tap will select fields by default when new fields are discovered in NetSuite objects.
+
+
+- **is_sandbox**(_optional_): Should always be set to true if you are connecting the Production account of NetSuite. Set it to false if you want to connect to your SandBox account. Default is false.
+
+
+- **start_date**(_optional_): Used by the tap as a bound on SOAP requests when searching for records. This should be an RFC3339 formatted date-time, like "2018-01-08T00:00:00Z".
+
+
+## Discovery mode:
+
+The tap can be invoked in discovery mode to find the available tables and
+columns in the database:
+
+```bash
+$ tap-netsuite --config config.json --discover > properties.json
+```
+
+A discovered catalog is output, with a JSON-schema description of each table. A
+source table directly corresponds to a Singer stream.
+
+Edit the `properties.json` and select the streams to replicate. Or use this helpful [discovery utility](https://github.com/chrisgoddard/singer-discover).
+
+## Run Tap:
+
+Run the tap like any other singer compatible tap:
 
 ```
-> tap-netsuite --config config.json --discover > properties.json
+$ tap-netsuite --config config.json --properties properties.json
 ```
 
-## Sync Data
+## License
 
-To sync data, select fields in the `properties.json` output and run the tap.
+Apache License Version 2.0
 
-```
-> tap-netsuite --config config.json --properties properties.json [--state state.json]
-```
+See [LICENSE](LICENSE) to see the full text.
