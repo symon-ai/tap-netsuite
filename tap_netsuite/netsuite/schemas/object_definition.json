@@ -19,16 +19,18 @@
     }
   ],
   "CustomerPayments": [
-    { "displayName": "Account", "name": "account", "type": "string" },
     { "displayName": "Id", "name": "internalId", "type": "string" },
+    { "displayName": "Account", "name": "account", "type": "string" },
     {
       "displayName": "AccountBookDetail",
       "name": "accountBookDetail",
       "type": "string"
     },
     { "displayName": "Applied", "name": "applied", "type": "number" },
+    { "displayName": "ApplyList", "name": "applyList", "type": "number" },
     { "displayName": "Balance", "name": "balance", "type": "number" },
-    { "displayName": "CheckNumber", "name": "checkNumber", "type": "string" },
+    { "displayName": "CcName", "name": "ccName", "type": "string" },
+    { "displayName": "CcNumber", "name": "ccNumber", "type": "string" },
     { "displayName": "Cleared", "name": "cleared", "type": "string" },
     { "displayName": "ClearedDate", "name": "clearedDate", "type": "datetime" },
     {
@@ -37,14 +39,32 @@
       "type": "number"
     },
     { "displayName": "CreatedDate", "name": "createdDate", "type": "datetime" },
-    { "displayName": "Currency", "name": "currency", "type": "string" },
+    { "displayName": "CurrencyRef", "name": "currency", "type": "string" },
     { "displayName": "CustomerRef", "name": "customer", "type": "string" },
+    { "displayName": "ExchangeRate", "name": "exchangeRate", "type": "double" },
+    { "displayName": "ExternalId", "name": "externalId", "type": "string" },
+    {
+      "displayName": "IsRecurringPayment",
+      "name": "isRecurringPayment",
+      "type": "boolean"
+    },
     {
       "displayName": "LastModifiedDate",
       "name": "lastModifiedDate",
       "type": "datetime"
     },
     { "displayName": "Payment", "name": "payment", "type": "number" },
+    {
+      "displayName": "PaymentMethodRef",
+      "name": "paymentMethod",
+      "type": "string"
+    },
+    {
+      "displayName": "PostingPeriod",
+      "name": "postingPeriod",
+      "type": "string"
+    },
+    { "displayName": "Status", "name": "status", "type": "string" },
     { "displayName": "Total", "name": "total", "type": "number" },
     { "displayName": "TranDate", "name": "tranDate", "type": "datetime" },
     { "displayName": "TranId", "name": "tranId", "type": "string" }
@@ -2633,5 +2653,27 @@
     { "displayName": "TranDate", "name": "tranDate", "type": "datetime" },
     { "displayName": "TranId", "name": "tranId", "type": "string" },
     { "displayName": "VatRegNum", "name": "vatRegNum", "type": "string" }
+  ],
+  "Currencies": [
+    { "displayName": "Name", "name": "name", "type": "string" },
+    {
+      "displayName": "IsBaseCurrency",
+      "name": "IsBaseCurrency",
+      "type": "boolean"
+    },
+    { "displayName": "ExchangeRate", "name": "exchangeRate", "type": "string" },
+    { "displayName": "Id", "name": "internalId", "type": "string" },
+    {
+      "displayName": "InclInFxRateUpdates",
+      "name": "inclInFxRateUpdates",
+      "type": "boolean"
+    },
+    {
+      "displayName": "IsInactive",
+      "name": "isInactive",
+      "type": "boolean"
+    },
+    { "displayName": "Symbol", "name": "symbol", "type": "string" },
+    { "displayName": "Name", "name": "name", "type": "string" }
   ]
 }
