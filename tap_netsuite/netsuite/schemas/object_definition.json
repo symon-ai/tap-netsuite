@@ -41,7 +41,7 @@
     { "displayName": "CreatedDate", "name": "createdDate", "type": "datetime" },
     { "displayName": "CurrencyRef", "name": "currency", "type": "string" },
     { "displayName": "CustomerRef", "name": "customer", "type": "string" },
-    { "displayName": "ExchangeRate", "name": "exchangeRate", "type": "double" },
+    { "displayName": "ExchangeRate", "name": "exchangeRate", "type": "number" },
     { "displayName": "ExternalId", "name": "externalId", "type": "string" },
     {
       "displayName": "IsRecurringPayment",
