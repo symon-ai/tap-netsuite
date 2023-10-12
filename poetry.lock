@@ -145,8 +145,8 @@ zeep = "*"
 [package.source]
 type = "git"
 url = "ssh://git@github.com/symon-ai/netsuite-sdk-py.git"
-reference = "WP-17394-v2"
-resolved_reference = "fe5157e278b987e228dc493216853b6c2f2ad57b"
+reference = "v2.7.6"
+resolved_reference = "3986ce3c5a40cb12cb8e019a7d840be128a8021c"
 
 [[package]]
 name = "platformdirs"
@@ -333,7 +333,7 @@ testing = ["pytest (>=6)", "pytest-checkdocs (>=2.4)", "flake8 (<5)", "pytest-co
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7.1"
-content-hash = "7e940bcd5e6efdb2325221b8c7581622bebfa519ad50fc8086a95b2f4acab7ff"
+content-hash = "b6693685ee9260263563abaf8794e6c3c1e5947b0eaaa25176345d83cd0f5e7d"
 
 [metadata.files]
 attrs = []
