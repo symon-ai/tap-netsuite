@@ -2,12 +2,14 @@
 import json
 import sys
 import singer
+import traceback
 import singer.utils as singer_utils
 from singer import metadata, metrics
 import tap_netsuite.netsuite as netsuite
 from tap_netsuite.netsuite import NetSuite
-from tap_netsuite.netsuite.exceptions import TapNetSuiteException, TapNetSuiteQuotaExceededException
+from tap_netsuite.netsuite.exceptions import TapNetSuiteException, TapNetSuiteQuotaExceededException, SymonException
 from tap_netsuite.sync import (sync_stream, get_stream_version)
+import requests
 
 LOGGER = singer.get_logger()
 
@@ -251,11 +253,13 @@ def do_discover(ns):
 
 
 def main_impl():
+    print('---main_impl---')
     args = singer_utils.parse_args(REQUIRED_CONFIG_KEYS)
 
     CONFIG.update(args.config)
     LOGGER.debug(f"NetSuite CONFIG IS {json.dumps(CONFIG)}")
 
+    error_info = None
     ns = None
     try:
         ns = NetSuite(ns_account=CONFIG.get('ns_account'),
@@ -266,8 +270,16 @@ def main_impl():
                       is_sandbox=CONFIG.get('is_sandbox'),
                       default_start_date=CONFIG.get('start_date'),
                       select_fields_by_default=CONFIG.get('select_fields_by_default'), )
-
-        ns.connect_tba()
+        try:
+            ns.connect_tba()
+        except (requests.exceptions.ConnectionError) as e:
+            message = str(e)
+            if 'Name or service not known' in message or 'nodename nor servname provided, or not known' in message:
+                raise SymonException('The account ID provided is incorrect. Please check and try again.', 'netSuite.NetSuiteInvalidAccountID')
+            raise
+        except AssertionError as e:
+            if 'Account cannot have hyphens, it is likely an underscore' in str(e):
+                raise SymonException('Account ID cannot contain hyphens. Please check the account ID and try again.', 'netSuite.NetSuiteInvalidAccountID')
 
         if args.discover:
             do_discover(ns)
@@ -275,13 +287,46 @@ def main_impl():
             catalog = args.properties
             state = build_state(args.state, catalog)
             do_sync(ns, catalog, state)
+    except SymonException as e:
+        exc_type, exc_value, exc_traceback = sys.exc_info()
+        error_info = {
+            'message': traceback.format_exception_only(exc_type, exc_value)[-1],
+            'code': e.code,
+            'traceback': "".join(traceback.format_tb(exc_traceback))
+        }
+
+        if e.details is not None:
+            error_info['details'] = e.details
+        raise
+    except BaseException as e:
+        exc_type, exc_value, exc_traceback = sys.exc_info()
+        error_info = {
+            'message': traceback.format_exception_only(exc_type, exc_value)[-1],
+            'traceback': "".join(traceback.format_tb(exc_traceback))
+        }
+        raise
     finally:
         if ns:
             ns = None
 
+        if error_info is not None:
+            error_file_path = args.config.get('error_file_path', None)
+            if error_file_path is not None:
+                try:
+                    with open(error_file_path, 'w', encoding='utf-8') as fp:
+                        json.dump(error_info, fp)
+                except:
+                    pass
+            # log error info as well in case file is corrupted
+            error_info_json = json.dumps(error_info)
+            error_start_marker = args.config.get('error_start_marker', '[tap_error_start]')
+            error_end_marker = args.config.get('error_end_marker', '[tap_error_end]')
+            LOGGER.info(f'{error_start_marker}{error_info_json}{error_end_marker}')
+
 
 def main():
     try:
+        print('---calling main_impl---')
         main_impl()
     except TapNetSuiteQuotaExceededException as e:
         LOGGER.critical(e)
