@@ -253,7 +253,6 @@ def do_discover(ns):
 
 
 def main_impl():
-    print('---main_impl---')
     args = singer_utils.parse_args(REQUIRED_CONFIG_KEYS)
 
     CONFIG.update(args.config)
@@ -326,7 +325,6 @@ def main_impl():
 
 def main():
     try:
-        print('---calling main_impl---')
         main_impl()
     except TapNetSuiteQuotaExceededException as e:
         LOGGER.critical(e)
