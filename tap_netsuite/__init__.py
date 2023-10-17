@@ -275,7 +275,7 @@ def main_impl():
         except (requests.exceptions.ConnectionError) as e:
             message = str(e)
             if 'Name or service not known' in message or 'nodename nor servname provided, or not known' in message:
-                raise SymonException('The account ID provided is incorrect. Please check and try again.', 'netSuite.NetSuiteInvalidAccountID')
+                raise SymonException('The account ID provided is incorrect. Please check the account ID and try again.', 'netSuite.NetSuiteInvalidAccountID')
             raise
         except AssertionError as e:
             if 'Account cannot have hyphens, it is likely an underscore' in str(e):

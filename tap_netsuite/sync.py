@@ -81,7 +81,7 @@ def sync_stream(ns, catalog_entry, state):
             singer.write_state(state)
         except RequestException as ex:
             raise Exception("Error syncing {}: {} Response: {}".format(
-                stream, ex, ex.response.text)) 
+                stream, ex, ex.response.text))
         except Exception as ex:
             if 'Invalid login attempt' in str(ex):
                 raise SymonException('The consumer key, consumer secret, token ID, or token secret provided is incorrect. Please check and try again.', 'netSuite.NetSuiteInvalidKey')
