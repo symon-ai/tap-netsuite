@@ -59,7 +59,8 @@ def build_state(raw_state, catalog):
     for catalog_entry in catalog['streams']:
         tap_stream_id = catalog_entry['tap_stream_id']
         catalog_metadata = metadata.to_map(catalog_entry['metadata'])
-        replication_method = catalog_metadata.get((), {}).get('replication-method')
+        replication_method = catalog_metadata.get(
+            (), {}).get('replication-method')
 
         version = singer.get_bookmark(raw_state,
                                       tap_stream_id,
@@ -69,13 +70,18 @@ def build_state(raw_state, catalog):
         if singer.get_bookmark(raw_state, tap_stream_id, 'JobID'):
             job_id = singer.get_bookmark(raw_state, tap_stream_id, 'JobID')
             batches = singer.get_bookmark(raw_state, tap_stream_id, 'BatchIDs')
-            current_bookmark = singer.get_bookmark(raw_state, tap_stream_id, 'JobHighestBookmarkSeen')
-            state = singer.write_bookmark(state, tap_stream_id, 'JobID', job_id)
-            state = singer.write_bookmark(state, tap_stream_id, 'BatchIDs', batches)
-            state = singer.write_bookmark(state, tap_stream_id, 'JobHighestBookmarkSeen', current_bookmark)
+            current_bookmark = singer.get_bookmark(
+                raw_state, tap_stream_id, 'JobHighestBookmarkSeen')
+            state = singer.write_bookmark(
+                state, tap_stream_id, 'JobID', job_id)
+            state = singer.write_bookmark(
+                state, tap_stream_id, 'BatchIDs', batches)
+            state = singer.write_bookmark(
+                state, tap_stream_id, 'JobHighestBookmarkSeen', current_bookmark)
 
         if replication_method == 'INCREMENTAL':
-            replication_key = catalog_metadata.get((), {}).get('replication-key')
+            replication_key = catalog_metadata.get(
+                (), {}).get('replication-key')
             replication_key_value = singer.get_bookmark(raw_state,
                                                         tap_stream_id,
                                                         replication_key)
@@ -86,7 +92,8 @@ def build_state(raw_state, catalog):
                 state = singer.write_bookmark(
                     state, tap_stream_id, replication_key, replication_key_value)
         elif replication_method == 'FULL_TABLE' and version is None:
-            state = singer.write_bookmark(state, tap_stream_id, 'version', version)
+            state = singer.write_bookmark(
+                state, tap_stream_id, 'version', version)
 
     return state
 
@@ -128,7 +135,8 @@ def do_sync(ns, catalog, state):
 
         state["current_stream"] = stream_name
         singer.write_state(state)
-        key_properties = metadata.to_map(catalog_entry['metadata']).get((), {}).get('table-key-properties')
+        key_properties = metadata.to_map(catalog_entry['metadata']).get(
+            (), {}).get('table-key-properties')
         singer.write_schema(
             stream,
             catalog_entry['schema'],
@@ -136,7 +144,8 @@ def do_sync(ns, catalog, state):
             replication_key,
             stream_alias)
 
-        job_id = singer.get_bookmark(state, catalog_entry['tap_stream_id'], 'JobID')
+        job_id = singer.get_bookmark(
+            state, catalog_entry['tap_stream_id'], 'JobID')
         if job_id:
             with metrics.record_counter(stream) as counter:
                 # Remove Job info from state once we complete this resumed query. One of a few cases could have occurred:
@@ -144,8 +153,10 @@ def do_sync(ns, catalog, state):
                 # 2. The job partially completed, in which case make JobHighestBookmarkSeen the new bookmark, or
                 #    existing bookmark if no bookmark exists for the Job.
                 # 3. The job completely failed, in which case maintain the existing bookmark, or None if no bookmark
-                state.get('bookmarks', {}).get(catalog_entry['tap_stream_id'], {}).pop('JobID', None)
-                state.get('bookmarks', {}).get(catalog_entry['tap_stream_id'], {}).pop('BatchIDs', None)
+                state.get('bookmarks', {}).get(
+                    catalog_entry['tap_stream_id'], {}).pop('JobID', None)
+                state.get('bookmarks', {}).get(
+                    catalog_entry['tap_stream_id'], {}).pop('BatchIDs', None)
                 bookmark = state.get('bookmarks', {}).get(catalog_entry['tap_stream_id'], {}) \
                     .pop('JobHighestBookmarkSeen', None)
                 existing_bookmark = state.get('bookmarks', {}).get(catalog_entry['tap_stream_id'], {}) \
@@ -169,7 +180,8 @@ def do_sync(ns, catalog, state):
                                               'version',
                                               stream_version)
             counter = sync_stream(ns, catalog_entry, state)
-            LOGGER.info("%s: Completed sync (%s rows)", stream_name, counter.value)
+            LOGGER.info("%s: Completed sync (%s rows)",
+                        stream_name, counter.value)
 
     state["current_stream"] = None
     singer.write_state(state)
@@ -209,7 +221,8 @@ def do_discover(ns):
 
             properties[field_name] = property_schema
 
-        replication_key = [f["displayName"] for f in fields if f["displayName"] in replication_key]
+        replication_key = [f["displayName"]
+                           for f in fields if f["displayName"] in replication_key]
         if replication_key:
             replication_key = replication_key[0]
             mdata = metadata.write(
@@ -218,8 +231,10 @@ def do_discover(ns):
         if replication_key:
             mdata = metadata.write(
                 mdata, (), 'valid-replication-keys', [replication_key])
-            mdata = metadata.write(mdata, (), 'replication-key', replication_key)
-            mdata = metadata.write(mdata, (), 'replication-method', 'INCREMENTAL')
+            mdata = metadata.write(
+                mdata, (), 'replication-key', replication_key)
+            mdata = metadata.write(
+                mdata, (), 'replication-method', 'INCREMENTAL')
         else:
             mdata = metadata.write(
                 mdata,
@@ -229,7 +244,8 @@ def do_discover(ns):
                     'replication-method': 'FULL_TABLE',
                     'reason': 'No replication keys found from the NetSuite API'})
 
-        mdata = metadata.write(mdata, (), 'table-key-properties', key_properties)
+        mdata = metadata.write(
+            mdata, (), 'table-key-properties', key_properties)
 
         schema = {
             'type': 'object',
@@ -255,6 +271,7 @@ def main_impl():
 
     CONFIG.update(args.config)
     LOGGER.debug(f"NetSuite CONFIG IS {json.dumps(CONFIG)}")
+    LOGGER.info(f'Page size: {CONFIG.get("page_size", 100)}')
 
     ns = None
     try:
@@ -265,7 +282,9 @@ def main_impl():
                       ns_token_secret=CONFIG.get('ns_token_secret'),
                       is_sandbox=CONFIG.get('is_sandbox'),
                       default_start_date=CONFIG.get('start_date'),
-                      select_fields_by_default=CONFIG.get('select_fields_by_default'), )
+                      select_fields_by_default=CONFIG.get(
+                          'select_fields_by_default'),
+                      page_size=CONFIG.get('page_size', 100))
 
         ns.connect_tba()
 

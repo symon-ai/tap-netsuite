@@ -99,7 +99,8 @@ class NetSuite:
                  ns_token_secret=None,
                  is_sandbox=True,
                  select_fields_by_default=None,
-                 default_start_date=None):
+                 default_start_date=None,
+                 page_size=100):
 
         self.ns_account = ns_account
         self.ns_consumer_key = ns_consumer_key
@@ -108,9 +109,10 @@ class NetSuite:
         self.ns_token_secret = ns_token_secret
         self.is_sandbox = is_sandbox
         self.select_fields_by_default = select_fields_by_default is True or (
-                isinstance(select_fields_by_default, str) and select_fields_by_default.lower() == 'true')
+            isinstance(select_fields_by_default, str) and select_fields_by_default.lower() == 'true')
 
         self.default_start_date = default_start_date
+        self.page_size = page_size
 
         if ns_account is not None:
             if is_sandbox is True:
@@ -136,7 +138,8 @@ class NetSuite:
             consumer_secret=self.ns_consumer_secret,
             token_key=self.ns_token_key,
             token_secret=self.ns_token_secret,
-            caching=caching
+            caching=caching,
+            page_size=self.page_size
         )
         self.ns_client = nc
 
