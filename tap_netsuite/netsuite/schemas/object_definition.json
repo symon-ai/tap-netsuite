@@ -2661,7 +2661,7 @@
       "name": "IsBaseCurrency",
       "type": "boolean"
     },
-    { "displayName": "ExchangeRate", "name": "exchangeRate", "type": "string" },
+    { "displayName": "ExchangeRate", "name": "exchangeRate", "type": "number" },
     { "displayName": "Id", "name": "internalId", "type": "string" },
     {
       "displayName": "InclInFxRateUpdates",
@@ -2673,7 +2673,6 @@
       "name": "isInactive",
       "type": "boolean"
     },
-    { "displayName": "Symbol", "name": "symbol", "type": "string" },
-    { "displayName": "Name", "name": "name", "type": "string" }
+    { "displayName": "Symbol", "name": "symbol", "type": "string" }
   ]
 }
