@@ -27,7 +27,7 @@
       "type": "string"
     },
     { "displayName": "Applied", "name": "applied", "type": "number" },
-    { "displayName": "ApplyList", "name": "applyList", "type": "number" },
+    { "displayName": "ApplyList", "name": "applyList", "type": "string" },
     { "displayName": "Balance", "name": "balance", "type": "number" },
     { "displayName": "CcName", "name": "ccName", "type": "string" },
     { "displayName": "CcNumber", "name": "ccNumber", "type": "string" },
