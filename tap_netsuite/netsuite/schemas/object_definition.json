@@ -67,7 +67,12 @@
     { "displayName": "Status", "name": "status", "type": "string" },
     { "displayName": "Total", "name": "total", "type": "number" },
     { "displayName": "TranDate", "name": "tranDate", "type": "datetime" },
-    { "displayName": "TranId", "name": "tranId", "type": "string" }
+    { "displayName": "TranId", "name": "tranId", "type": "string" },
+    {
+      "displayName": "CustomFieldList",
+      "name": "customFieldList",
+      "type": "string"
+    }
   ],
   "Accounts": [
     { "displayName": "Active", "name": "isInactive", "type": "boolean" },
@@ -77,7 +82,12 @@
     { "displayName": "Name", "name": "acctName", "type": "string" },
     { "displayName": "Description", "name": "description", "type": "string" },
     { "displayName": "CurrencyRef", "name": "currency", "type": "string" },
-    { "displayName": "Id", "name": "internalId", "type": "string" }
+    { "displayName": "Id", "name": "internalId", "type": "string" },
+    {
+      "displayName": "CustomFieldList",
+      "name": "customFieldList",
+      "type": "string"
+    }
   ],
   "Vendors": [
     { "displayName": "Active", "name": "isInactive", "type": "boolean" },
@@ -90,7 +100,12 @@
     { "displayName": "Phone", "name": "phone", "type": "string" },
     { "displayName": "FirstName", "name": "firstName", "type": "string" },
     { "displayName": "LastName", "name": "lastName", "type": "string" },
-    { "displayName": "EntityId", "name": "entityId", "type": "string" }
+    { "displayName": "EntityId", "name": "entityId", "type": "string" },
+    {
+      "displayName": "CustomFieldList",
+      "name": "customFieldList",
+      "type": "string"
+    }
   ],
   "VendorBills": [
     { "displayName": "Id", "name": "internalId", "type": "string" },
@@ -109,7 +124,12 @@
       "type": "datetime"
     },
     { "displayName": "Total", "name": "userTotal", "type": "string" },
-    { "displayName": "Status", "name": "status", "type": "string" }
+    { "displayName": "Status", "name": "status", "type": "string" },
+    {
+      "displayName": "CustomFieldList",
+      "name": "customFieldList",
+      "type": "string"
+    }
   ],
   "VendorPayment": [
     { "displayName": "Id", "name": "internalId", "type": "string" },
@@ -129,7 +149,12 @@
     },
     { "displayName": "Balance", "name": "balance", "type": "string" },
     { "displayName": "Amount", "name": "total", "type": "string" },
-    { "displayName": "Status", "name": "status", "type": "string" }
+    { "displayName": "Status", "name": "status", "type": "string" },
+    {
+      "displayName": "CustomFieldList",
+      "name": "customFieldList",
+      "type": "string"
+    }
   ],
   "Invoice": [
     { "displayName": "Id", "name": "internalId", "type": "string" },
@@ -174,7 +199,12 @@
     { "displayName": "SubTotal", "name": "subTotal", "type": "string" },
     { "displayName": "Status", "name": "status", "type": "string" },
     { "displayName": "TranDate", "name": "tranDate", "type": "datetime" },
-    { "displayName": "TranId", "name": "tranId", "type": "string" }
+    { "displayName": "TranId", "name": "tranId", "type": "string" },
+    {
+      "displayName": "CustomFieldList",
+      "name": "customFieldList",
+      "type": "string"
+    }
   ],
   "Classifications": [
     { "displayName": "Id", "name": "internalId", "type": "string" },
@@ -270,7 +300,12 @@
     },
     { "displayName": "SubsidiaryRef", "name": "subsidiary", "type": "string" },
     { "displayName": "TranDate", "name": "tranDate", "type": "datetime" },
-    { "displayName": "TranId", "name": "tranId", "type": "string" }
+    { "displayName": "TranId", "name": "tranId", "type": "string" },
+    {
+      "displayName": "CustomFieldList",
+      "name": "customFieldList",
+      "type": "string"
+    }
   ],
   "PriceLevel": [
     { "displayName": "Id", "name": "internalId", "type": "string" },
