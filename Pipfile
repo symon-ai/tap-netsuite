@@ -1,0 +1,21 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+requests = ">=2.31.0"
+singer-python = "==5.3.1"
+xmltodict = "==0.11.0"
+jsonpath-ng = "==1.4.3"
+jsonschema = "==2.6.0"
+pytz = "==2018.4"
+urllib3 = ">=1.26.17"
+idna = ">=3.7"
+
+netsuitesdk = {ref = "3986ce3c5a40cb12cb8e019a7d840be128a8021c", git = "ssh://git@github.com/symon-ai/netsuite-sdk-py.git"}
+
+[dev-packages]
+
+[requires]
+python_version = "^3.7.1"
