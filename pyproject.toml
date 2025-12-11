@@ -1,15 +1,15 @@
 [tool.poetry]
 name = "tap-netsuite"
-version = "1.6.0"
+version = "1.7.0"
 description = "Singer.io tap for extracting data for NetSuite"
 authors = ["Stitch"]
 classifiers = ["Programming Language :: Python :: 3 :: Only"]
 
 [tool.poetry.dependencies]
-python = "^3.7.1"
+python = "^3.8"
 netsuitesdk = {git = "ssh://git@github.com/symon-ai/netsuite-sdk-py.git", tag = "v2.7.6"}
 
-requests = "^2.31.0"
+requests = "2.32.4"
 singer-python = "5.3.1"
 xmltodict = "0.11.0"
 jsonpath-ng = "1.4.3"
