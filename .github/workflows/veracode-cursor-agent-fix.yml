@@ -29,7 +29,7 @@ jobs:
       - name: Set environment variables
         run: |
           echo "REPO_NAME=${{ github.repository }}" >> $GITHUB_ENV
-          echo "DEFAULT_BRANCH=main" >> $GITHUB_ENV
+          echo "DEFAULT_BRANCH=master" >> $GITHUB_ENV
 
       - name: Create Cursor Background Agent
         id: create-cursor-agent
