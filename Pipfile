@@ -5,6 +5,7 @@ name = "pypi"
 
 [packages]
 requests = ">=2.31.0"
+certifi = ">=2024.7.4"
 singer-python = "==5.3.1"
 xmltodict = "==0.11.0"
 jsonpath-ng = "==1.4.3"
