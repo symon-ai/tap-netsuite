@@ -425,7 +425,7 @@ htmlsoup = ["BeautifulSoup4"]
 
 [[package]]
 name = "netsuitesdk"
-version = "2.7.6"
+version = "3.0.0"
 description = ""
 optional = false
 python-versions = "*"
@@ -438,24 +438,19 @@ zeep = "*"
 [package.source]
 type = "git"
 url = "ssh://git@github.com/symon-ai/netsuite-sdk-py.git"
-reference = "v2.7.6"
-resolved_reference = "3986ce3c5a40cb12cb8e019a7d840be128a8021c"
+reference = "v3.0.0"
+resolved_reference = "d6127cb3b2ab744efeead207c0086dba9561ea0b"
 
 [[package]]
 name = "platformdirs"
-version = "4.5.1"
+version = "4.9.2"
 description = "A small Python package for determining appropriate platform-specific dirs, e.g. a `user data dir`."
 optional = false
 python-versions = ">=3.10"
 files = [
-    {file = "platformdirs-4.5.1-py3-none-any.whl", hash = "sha256:d03afa3963c806a9bed9d5125c8f4cb2fdaf74a55ab60e5d59b3fde758104d31"},
-    {file = "platformdirs-4.5.1.tar.gz", hash = "sha256:61d5cdcc6065745cdd94f0f878977f8de9437be93de97c1c12f853c9c0cdcbda"},
+    {file = "platformdirs-4.9.2-py3-none-any.whl", hash = "sha256:9170634f126f8efdae22fb58ae8a0eaa86f38365bc57897a6c4f781d1f5875bd"},
+    {file = "platformdirs-4.9.2.tar.gz", hash = "sha256:9a33809944b9db043ad67ca0db94b14bf452cc6aeaac46a88ea55b26e2e9d291"},
 ]
-
-[package.extras]
-docs = ["furo (>=2025.9.25)", "proselint (>=0.14)", "sphinx (>=8.2.3)", "sphinx-autodoc-typehints (>=3.2)"]
-test = ["appdirs (==1.4.4)", "covdefaults (>=2.3)", "pytest (>=8.4.2)", "pytest-cov (>=7)", "pytest-mock (>=3.15.1)"]
-type = ["mypy (>=1.18.2)"]
 
 [[package]]
 name = "python-dateutil"
@@ -729,4 +724,4 @@ xmlsec = ["xmlsec (>=0.6.1)"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.13.0"
-content-hash = "86644507bf635f2b9b0b3c350e3229406b9ca815104e02cd4cb02e083db390cc"
+content-hash = "6b857d8927a90690b01e822ef297e6c25acf5421f134a93d79a000a52a32d08d"

@@ -1,3 +1,37 @@
+# our corporate firewall results in a self signed cert in the chain
+# uncomment SSL monkey patch below to test locally
+
+# SSL WORKAROUND
+# import ssl
+
+# # Patch at the ssl module level - make wrap_socket ignore verification
+# _original_wrap_socket = ssl.SSLContext.wrap_socket
+
+# def _patched_wrap_socket(self, sock, *args, **kwargs):
+#     self.check_hostname = False
+#     self.verify_mode = ssl.CERT_NONE
+#     return _original_wrap_socket(self, sock, *args, **kwargs)
+
+# ssl.SSLContext.wrap_socket = _patched_wrap_socket
+
+# # Also patch requests.adapters.HTTPAdapter to always disable verification
+# import requests.adapters
+# _original_send = requests.adapters.HTTPAdapter.send
+
+# def _patched_send(self, request, stream=False, timeout=None, verify=True, cert=None, proxies=None):
+#     return _original_send(self, request, stream=stream, timeout=timeout, verify=False, cert=cert, proxies=proxies)
+
+# requests.adapters.HTTPAdapter.send = _patched_send
+
+# # Suppress warnings
+# import urllib3
+# urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+# import warnings
+# warnings.filterwarnings('ignore', message='Unverified HTTPS request')
+# warnings.filterwarnings('ignore', category=DeprecationWarning)
+# END SSL WORKAROUND
+
 #!/usr/bin/env python3
 import json
 import sys

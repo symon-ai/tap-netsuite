@@ -1,12 +1,11 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "c9a198560c8e92bc0ebb4adabf2b38dc585ada403e9ac9bbbcd7114f981838de"
+            "sha256": "5c804bf095080b86b0202da909a1400319fadb58b11b3a6dca495152ccf54472"
         },
         "pipfile-spec": 6,
         "requires": {
-            "python_full_version": "3.13.3",
-            "python_version": "3.13"
+            "python_version": "3.10"
         },
         "sources": [
             {
@@ -404,15 +403,15 @@
         "netsuitesdk": {
             "git": "ssh://git@github.com/symon-ai/netsuite-sdk-py.git",
             "markers": "python_full_version >= '3.13.0' and python_full_version < '4.0.0'",
-            "ref": "3986ce3c5a40cb12cb8e019a7d840be128a8021c"
+            "ref": "d6127cb3b2ab744efeead207c0086dba9561ea0b"
         },
         "platformdirs": {
             "hashes": [
-                "sha256:61d5cdcc6065745cdd94f0f878977f8de9437be93de97c1c12f853c9c0cdcbda",
-                "sha256:d03afa3963c806a9bed9d5125c8f4cb2fdaf74a55ab60e5d59b3fde758104d31"
+                "sha256:9170634f126f8efdae22fb58ae8a0eaa86f38365bc57897a6c4f781d1f5875bd",
+                "sha256:9a33809944b9db043ad67ca0db94b14bf452cc6aeaac46a88ea55b26e2e9d291"
             ],
             "markers": "python_full_version >= '3.13.0' and python_full_version < '4.0.0'",
-            "version": "==4.5.1"
+            "version": "==4.9.2"
         },
         "python-dateutil": {
             "hashes": [

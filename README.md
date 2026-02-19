@@ -86,6 +86,10 @@ source table directly corresponds to a Singer stream.
 
 Edit the `properties.json` and select the streams to replicate. Or use this helpful [discovery utility](https://github.com/chrisgoddard/singer-discover).
 
+### NOTE:
+Our firewall results in us having a self-signed certificate in the chain
+uncomment the workaround in tap_netsuite/__init__.py if you need to run tap from your terminal
+
 ## Run Tap:
 
 Run the tap like any other singer compatible tap:
