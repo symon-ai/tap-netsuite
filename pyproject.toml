@@ -11,6 +11,7 @@ netsuitesdk = {git = "ssh://git@github.com/symon-ai/netsuite-sdk-py.git", tag = 
 
 requests = "^2.32.0"
 singer-python = "6.3.0"
+jsonpath-ng = "^1.5.3"
 
 [tool.poetry.dev-dependencies]
 
