@@ -86,6 +86,10 @@ source table directly corresponds to a Singer stream.
 
 Edit the `properties.json` and select the streams to replicate. Or use this helpful [discovery utility](https://github.com/chrisgoddard/singer-discover).
 
+### NOTE:
+Our firewall results in us having a self-signed certificate in the chain
+uncomment the workaround in tap_netsuite/__init__.py if you need to run tap from your terminal
+
 ## Run Tap:
 
 Run the tap like any other singer compatible tap:
@@ -93,6 +97,35 @@ Run the tap like any other singer compatible tap:
 ```
 $ tap-netsuite --config config.json --properties properties.json
 ```
+
+## Package manager
+We only use poetry to manage our packages. Pipfile is there because our code scan doesn't support poetry.lock. So we do the following hack to generate Pipfile and Pipfile.lock based on our poetry.lock:
+# 1. Export all dependencies from poetry.lock to requirements.txt
+```
+poetry export -f requirements.txt --output requirements.txt --without-hashes
+```
+# 1b. (Optional) Make sure pipenv has the right python version
+Check:
+```
+pipenv --support
+```
+Install:
+```
+python -m pip install --user pipenv
+```
+
+# 2. Generate Pipfile and Pipfile.lock from requirements.txt (make sure you pass in right version of python)
+```
+pipenv install --python 3.13 -r requirements.txt
+```
+
+Check that the required python version in the Pipfile matches your expected python version. For some reason even if requirements.txt specify the right python version pipenv can still default to a different version based on the some stale versioning in the venv. In which case, do the following:
+
+# 1. Delete the Pipfile and lock, and deactivate your venv
+
+# 2. Delete the venv you created manually or with `pipenv --rm`
+
+# 3. Re-run the pipenv install command
 
 ## License
 
