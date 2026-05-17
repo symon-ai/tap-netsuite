@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "tap-netsuite"
-version = "2.3.0"
+version = "2.4.0"
 description = "Singer.io tap for extracting data for NetSuite"
 authors = ["Stitch"]
 classifiers = ["Programming Language :: Python :: 3 :: Only"]
