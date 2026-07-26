@@ -34,6 +34,7 @@
 
 #!/usr/bin/env python3
 import json
+import os
 import sys
 import singer
 import traceback
@@ -290,6 +291,41 @@ def do_discover(ns):
     json.dump(result, sys.stdout, indent=4)
 
 
+def resolve_safe_error_file_path(error_file_path, base_dir=None):
+    """Validate a config-supplied error file path against path-traversal (CWE-73).
+
+    ``error_file_path`` comes from the tap config (external/user-supplied input),
+    so it must be constrained to a trusted output directory before being handed
+    to ``open()``. This resolves the path against ``base_dir`` (the intended
+    output directory, defaulting to the current working directory), canonicalizes
+    it, and rejects any path whose real location escapes ``base_dir`` (absolute
+    paths outside it, ``..`` traversal, symlink escapes).
+
+    Returns the canonical, validated absolute path, or ``None`` if the input is
+    empty or fails validation (in which case the caller should skip writing the
+    error file and rely on the log markers instead).
+    """
+    if not error_file_path:
+        return None
+
+    if base_dir is None:
+        base_dir = os.getcwd()
+
+    # Canonicalize both the base directory and the candidate path so that
+    # symlinks, "..", and mixed absolute/relative segments are all resolved
+    # before we compare them.
+    base_real = os.path.realpath(base_dir)
+    candidate_real = os.path.realpath(os.path.join(base_real, error_file_path))
+
+    # Ensure the resolved candidate stays within the trusted base directory.
+    if candidate_real != base_real and not candidate_real.startswith(base_real + os.sep):
+        LOGGER.warning(
+            'Ignoring error_file_path outside of the allowed output directory')
+        return None
+
+    return candidate_real
+
+
 def main_impl():
     args = singer_utils.parse_args(REQUIRED_CONFIG_KEYS)
 
@@ -348,7 +384,8 @@ def main_impl():
 
         if error_info is not None:
             try:
-                error_file_path = args.config.get('error_file_path', None)
+                error_file_path = resolve_safe_error_file_path(
+                    args.config.get('error_file_path', None))
                 if error_file_path is not None:
                     try:
                         with open(error_file_path, 'w', encoding='utf-8') as fp:
