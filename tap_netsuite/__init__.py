@@ -43,6 +43,7 @@ import tap_netsuite.netsuite as netsuite
 from tap_netsuite.netsuite import NetSuite
 from tap_netsuite.netsuite.exceptions import TapNetSuiteException, TapNetSuiteQuotaExceededException, SymonException
 from tap_netsuite.sync import (sync_stream, get_stream_version)
+from tap_netsuite.path_utils import validate_error_file_path
 import requests
 
 LOGGER = singer.get_logger()
@@ -351,7 +352,11 @@ def main_impl():
                 error_file_path = args.config.get('error_file_path', None)
                 if error_file_path is not None:
                     try:
-                        with open(error_file_path, 'w', encoding='utf-8') as fp:
+                        # CWE-73: error_file_path is config-derived (tenant
+                        # controllable). Validate/normalize it and constrain it
+                        # to the working directory before using it as a sink.
+                        safe_error_file_path = validate_error_file_path(error_file_path)
+                        with open(safe_error_file_path, 'w', encoding='utf-8') as fp:
                             json.dump(error_info, fp)
                     except:
                         pass
