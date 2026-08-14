@@ -41,6 +41,7 @@ import singer.utils as singer_utils
 from singer import metadata, metrics
 import tap_netsuite.netsuite as netsuite
 from tap_netsuite.netsuite import NetSuite
+from tap_netsuite.error_file import write_error_info
 from tap_netsuite.netsuite.exceptions import TapNetSuiteException, TapNetSuiteQuotaExceededException, SymonException
 from tap_netsuite.sync import (sync_stream, get_stream_version)
 import requests
@@ -351,8 +352,7 @@ def main_impl():
                 error_file_path = args.config.get('error_file_path', None)
                 if error_file_path is not None:
                     try:
-                        with open(error_file_path, 'w', encoding='utf-8') as fp:
-                            json.dump(error_info, fp)
+                        write_error_info(error_file_path, error_info)
                     except:
                         pass
                 # log error info as well in case file is corrupted
