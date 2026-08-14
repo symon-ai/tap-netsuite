@@ -42,6 +42,22 @@ class WriteErrorInfoTest(unittest.TestCase):
 
             self.assertFalse(outside_file.exists())
 
+    def test_rejects_parent_directory_traversal(self):
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            working_directory = Path(temporary_directory) / "working"
+            working_directory.mkdir()
+            outside_file = Path(temporary_directory) / "tapError.json"
+            outside_file.write_text("unchanged", encoding="utf-8")
+            previous_directory = os.getcwd()
+            os.chdir(working_directory)
+            try:
+                with self.assertRaisesRegex(ValueError, "within the working directory"):
+                    write_error_info("../tapError.json", {"message": "failed"})
+            finally:
+                os.chdir(previous_directory)
+
+            self.assertEqual("unchanged", outside_file.read_text(encoding="utf-8"))
+
     @unittest.skipUnless(hasattr(os, "O_NOFOLLOW"), "O_NOFOLLOW is not available")
     def test_rejects_symbolic_link_destination(self):
         with tempfile.TemporaryDirectory() as temporary_directory:
