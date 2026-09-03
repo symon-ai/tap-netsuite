@@ -7,38 +7,25 @@ from singer import Transformer, metadata, metrics
 from requests.exceptions import RequestException
 from jsonpath_ng import jsonpath, parse
 import json
-from zeep.helpers import serialize_object
 from tap_netsuite.netsuite.exceptions import SymonException
-import types
 
 LOGGER = singer.get_logger()
 
 
-def get_internal_name_by_name(ns, stream):
-    to_return = {}
-    object_definition = ns.describe(stream)
-    for element in object_definition:
-        to_return[element.get('displayName')] = element.get('name')
+def transform_data_hook():
+    """Schema-driven value coercions.
 
-    return to_return
-
-
-def transform_data_hook(ns, stream):
+    Records arrive from the data source already keyed by catalog display name, so this hook is
+    transport-agnostic: it only reconciles value shapes that NetSuite returns but the emitted
+    schema does not allow.
+    """
     def pre_hook(data, typ, schema):
-        internal_name_by_property = get_internal_name_by_name(ns, stream)
         result = data
-        if isinstance(data, dict):
-            result = {}
-            schema_properties = schema.get('properties', {})
-            for _property in schema_properties:
-                prop = internal_name_by_property[_property]
-                data_property = data.get(prop, None)
-                if isinstance(data_property, datetime.datetime) is True:
-                    data_property = data_property.isoformat()
-                result[_property] = data_property
 
-            if not typ == 'object':
-                result = json.dumps(data, default=str)
+        # Reference and sublist fields are typed as strings in the catalog but arrive as nested
+        # structures. Serialize them rather than emit a schema violation.
+        if isinstance(data, dict) and not typ == 'object':
+            result = json.dumps(data, default=str)
 
         # NetSuite can return the value '0.0' for integer typed fields. This
         # causes a schema violation. Convert it to '0' if schema['type'] has
@@ -108,20 +95,11 @@ def sync_records(ns, catalog_entry, state, counter):
 
     previous_max_replication_key = None
 
-    query_func = ns.query
-    query_result = query_func(ns, catalog_entry, state)
-
-    if not isinstance(query_result, types.GeneratorType):
-        if query_result is not None:
-            query_result = [query_result]
-        else:
-            query_result = []
-
-    for page in query_result:
+    for page in ns.query(catalog_entry, state):
         for rec in page:
             counter.increment()
-            with Transformer(pre_hook=transform_data_hook(ns, stream)) as transformer:
-                rec = transformer.transform(serialize_object(rec), schema)
+            with Transformer(pre_hook=transform_data_hook()) as transformer:
+                rec = transformer.transform(rec, schema)
 
             singer.write_message(
                 singer.RecordMessage(
