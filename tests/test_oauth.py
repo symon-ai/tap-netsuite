@@ -46,15 +46,15 @@ class TestAccountAddressing:
 
 
 class TestAssertion:
-    def test_assertion_is_signed_with_rs256_and_carries_certificate_id_as_kid(
+    def test_assertion_is_signed_with_ps256_and_carries_certificate_id_as_kid(
             self, token_manager, public_key):
         assertion = token_manager._build_assertion()
 
         header = jwt.get_unverified_header(assertion)
-        assert header['alg'] == 'RS256'
+        assert header['alg'] == 'PS256'
         assert header['kid'] == CERTIFICATE_ID
 
-        claims = jwt.decode(assertion, public_key, algorithms=['RS256'], audience=TOKEN_URL)
+        claims = jwt.decode(assertion, public_key, algorithms=['PS256'], audience=TOKEN_URL)
         assert claims['iss'] == CLIENT_ID
         assert claims['aud'] == TOKEN_URL
         assert claims['scope'] == ['rest_webservices']

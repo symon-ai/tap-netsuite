@@ -1,6 +1,6 @@
 """OAuth 2.0 client credentials (machine-to-machine) token minting for NetSuite.
 
-NetSuite's client credentials flow authenticates with an RS256-signed JWT assertion rather than
+NetSuite's client credentials flow authenticates with a PS256-signed JWT assertion rather than
 a client secret. Access tokens are valid for 60 minutes and there is no refresh token: when one
 expires the flow is simply restarted. Since a large sync easily outlives a single token, this
 manager mints tokens on demand and re-mints them shortly before expiry.
@@ -19,7 +19,8 @@ LOGGER = singer.get_logger()
 
 TOKEN_PATH = '/services/rest/auth/oauth2/v1/token'
 CLIENT_ASSERTION_TYPE = 'urn:ietf:params:oauth:client-assertion-type:jwt-bearer'
-SIGNING_ALGORITHM = 'RS256'
+# NetSuite ended RSA PKCS#1 v1.5 (RS256) for M2M OAuth on 2025-03-01; PS256 is required.
+SIGNING_ALGORITHM = 'PS256'
 
 # Scope enabled on the integration record. REST web services covers both the SuiteQL query
 # service and the record API.
