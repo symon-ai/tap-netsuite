@@ -220,6 +220,19 @@ class TestErrorHandling:
         assert excinfo.value.code == 'netSuite.NetSuiteInsufficientPermissions'
 
     @responses.activate
+    def test_forbidden_includes_netsuite_detail_when_present(self, stub_token_manager):
+        responses.add(
+            responses.POST, QUERY_URL, status=403,
+            json={'o:errorDetails': [{'detail': 'Permission Violation: SuiteAnalytics Workbook'}]}
+        )
+
+        with pytest.raises(SymonException) as excinfo:
+            list(self.make_client(stub_token_manager).iter_pages(self.query()))
+
+        assert excinfo.value.code == 'netSuite.NetSuiteInsufficientPermissions'
+        assert 'SuiteAnalytics Workbook' in str(excinfo.value)
+
+    @responses.activate
     def test_timeout_suggests_narrowing_the_start_date(self, stub_token_manager, monkeypatch):
         import requests
 

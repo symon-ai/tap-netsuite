@@ -223,12 +223,14 @@ class SuiteQLClient:
             )
 
         if response.status_code == 403:
-            return SymonException(
+            message = (
                 'The NetSuite role mapped to this integration does not have permission to run '
                 'SuiteQL queries or to read this record type. Check the role permissions and the '
-                'REST Web Services scope on the integration record.',
-                'netSuite.NetSuiteInsufficientPermissions'
+                'REST Web Services scope on the integration record.'
             )
+            if detail_text:
+                message += f' NetSuite reported: {detail_text}'
+            return SymonException(message, 'netSuite.NetSuiteInsufficientPermissions')
 
         if response.status_code == 400:
             return SymonException(
