@@ -1,0 +1,905 @@
+{
+  "_comment": [
+    "SuiteQL query metadata, one entry per stream. Field-level column expressions live in",
+    "object_definition.json under 'suiteqlExpr' and are generated from this file by",
+    "scripts/generate_suiteql_mapping.py -- edit here, then regenerate.",
+    "",
+    "table:          FROM clause, including any joins needed by refs.",
+    "alias:          alias of the primary table.",
+    "keyColumn:      unique ascending column used for keyset pagination.",
+    "replication:    column backing the stream's replication key, or null for FULL_TABLE.",
+    "where:          static predicates, e.g. narrowing the transaction table to one record type.",
+    "columns:        display name -> SuiteQL expression, for fields the default derivation",
+    "                (lowercased SOAP name) gets wrong.",
+    "refs:           display name -> {column, table, nameColumn} for fields that SOAP returns as",
+    "                a nested RecordRef. Selected as two columns and reassembled into a dict.",
+    "sublists:       display name -> sublist query spec. 'customFields' is handled specially: the",
+    "                account's custom columns are discovered at runtime.",
+    "unsupported:    fields with no SuiteQL equivalent established yet. Emitted as null with a",
+    "                warning rather than silently wrong data.",
+    "verified:       whether every expression in this stream has been confirmed against a real",
+    "                NetSuite account by scripts/suiteql_parity.py."
+  ],
+  "_transactionLineColumns": [
+    "id",
+    "linesequencenumber",
+    "item",
+    "quantity",
+    "rate",
+    "netamount",
+    "grossamount",
+    "foreignamount",
+    "memo",
+    "department",
+    "class",
+    "location",
+    "entity",
+    "expenseaccount",
+    "units",
+    "mainline",
+    "taxline",
+    "isclosed",
+    "createdfrom"
+  ],
+  "Customer": {
+    "table": "customer",
+    "alias": "c",
+    "keyColumn": "id",
+    "replication": "lastmodifieddate",
+    "where": [],
+    "columns": {
+      "Name": "entityid",
+      "Status": "entitystatus"
+    },
+    "refs": {
+      "Subsidiary": {
+        "column": "subsidiary",
+        "table": "subsidiary",
+        "nameColumn": "name"
+      }
+    },
+    "sublists": {
+      "CustomFieldList": {
+        "kind": "customFields",
+        "prefix": "custentity"
+      }
+    },
+    "unsupported": [],
+    "verified": false
+  },
+  "Accounts": {
+    "table": "account",
+    "alias": "a",
+    "keyColumn": "id",
+    "replication": null,
+    "where": [],
+    "columns": {
+      "Active": "isinactive",
+      "AcctNum": "acctnumber",
+      "AccountType": "accttype",
+      "Name": "acctname"
+    },
+    "refs": {
+      "ParentAccount": {
+        "column": "parent",
+        "table": "account",
+        "nameColumn": "acctname"
+      },
+      "CurrencyRef": {
+        "column": "currency",
+        "table": "currency",
+        "nameColumn": "name"
+      }
+    },
+    "sublists": {
+      "CustomFieldList": {
+        "kind": "customFields",
+        "prefix": "custrecord"
+      }
+    },
+    "unsupported": [],
+    "verified": false
+  },
+  "Vendors": {
+    "table": "vendor",
+    "alias": "v",
+    "keyColumn": "id",
+    "replication": null,
+    "where": [],
+    "columns": {
+      "Active": "isinactive",
+      "AcctNum": "accountnumber",
+      "EntityId": "entityid"
+    },
+    "refs": {
+      "CurrencyRef": {
+        "column": "currency",
+        "table": "currency",
+        "nameColumn": "name"
+      }
+    },
+    "sublists": {
+      "CustomFieldList": {
+        "kind": "customFields",
+        "prefix": "custentity"
+      }
+    },
+    "unsupported": [],
+    "verified": false
+  },
+  "Classifications": {
+    "table": "classification",
+    "alias": "cl",
+    "keyColumn": "id",
+    "replication": null,
+    "where": [],
+    "columns": {},
+    "refs": {
+      "parent": {
+        "column": "parent",
+        "table": "classification",
+        "nameColumn": "name"
+      }
+    },
+    "sublists": {
+      "customFieldList": {
+        "kind": "customFields",
+        "prefix": "custrecord"
+      },
+      "classTranslationList": {
+        "kind": "unsupported"
+      },
+      "subsidiaryList": {
+        "kind": "unsupported"
+      }
+    },
+    "unsupported": [],
+    "verified": false
+  },
+  "PriceLevel": {
+    "table": "pricelevel",
+    "alias": "pl",
+    "keyColumn": "id",
+    "replication": null,
+    "where": [],
+    "columns": {},
+    "refs": {},
+    "sublists": {},
+    "unsupported": [],
+    "verified": false
+  },
+  "Currencies": {
+    "table": "currency",
+    "alias": "cur",
+    "keyColumn": "id",
+    "replication": null,
+    "where": [],
+    "columns": {
+      "IsBaseCurrency": "isbasecurrency"
+    },
+    "refs": {},
+    "sublists": {},
+    "unsupported": [],
+    "verified": false
+  },
+  "Invoice": {
+    "table": "transaction",
+    "alias": "t",
+    "keyColumn": "id",
+    "replication": "lastmodifieddate",
+    "where": [
+      "t.recordtype = 'invoice'"
+    ],
+    "columns": {
+      "LastModDate": "lastmodifieddate",
+      "DateCreated": "createddate",
+      "SubTotal": "foreignsubtotal",
+      "Balance": "foreignamountunpaid",
+      "AmountPaid": "foreignamountpaid",
+      "AmountRemaining": "foreignamountunpaid",
+      "DiscountTotal": "discounttotal"
+    },
+    "refs": {
+      "Department": {
+        "column": "department",
+        "table": "department",
+        "nameColumn": "name"
+      },
+      "Class": {
+        "column": "class",
+        "table": "classification",
+        "nameColumn": "name"
+      },
+      "Currency": {
+        "column": "currency",
+        "table": "currency",
+        "nameColumn": "name"
+      },
+      "Account": {
+        "column": "account",
+        "table": "account",
+        "nameColumn": "acctname"
+      },
+      "Entity": {
+        "column": "entity",
+        "table": "entity",
+        "nameColumn": "altname"
+      },
+      "BillingAccount": {
+        "column": "billingaccount",
+        "table": "billingaccount",
+        "nameColumn": "name"
+      },
+      "DiscountItem": {
+        "column": "discountitem",
+        "table": "item",
+        "nameColumn": "itemid"
+      }
+    },
+    "sublists": {
+      "ItemList": {
+        "kind": "transactionLines",
+        "wrapper": "item"
+      },
+      "CustomFieldList": {
+        "kind": "customFields",
+        "prefix": "custbody"
+      }
+    },
+    "unsupported": [],
+    "verified": false
+  },
+  "CustomerPayments": {
+    "table": "transaction",
+    "alias": "t",
+    "keyColumn": "id",
+    "replication": "lastmodifieddate",
+    "where": [
+      "t.recordtype = 'customerpayment'"
+    ],
+    "columns": {
+      "CreatedDate": "createddate",
+      "Total": "foreigntotal",
+      "Payment": "foreigntotal",
+      "Applied": "foreignamountpaid",
+      "Balance": "foreignamountunpaid"
+    },
+    "refs": {
+      "Account": {
+        "column": "account",
+        "table": "account",
+        "nameColumn": "acctname"
+      },
+      "CurrencyRef": {
+        "column": "currency",
+        "table": "currency",
+        "nameColumn": "name"
+      },
+      "CustomerRef": {
+        "column": "entity",
+        "table": "entity",
+        "nameColumn": "altname"
+      },
+      "PaymentMethodRef": {
+        "column": "paymentmethod",
+        "table": "paymentmethod",
+        "nameColumn": "name"
+      },
+      "PostingPeriod": {
+        "column": "postingperiod",
+        "table": "accountingperiod",
+        "nameColumn": "periodname"
+      }
+    },
+    "sublists": {
+      "ApplyList": {
+        "kind": "unsupported"
+      },
+      "CustomFieldList": {
+        "kind": "customFields",
+        "prefix": "custbody"
+      }
+    },
+    "unsupported": [
+      "AccountBookDetail",
+      "ConsolidateBalance",
+      "IsRecurringPayment"
+    ],
+    "verified": false
+  },
+  "VendorBills": {
+    "table": "transaction",
+    "alias": "t",
+    "keyColumn": "id",
+    "replication": "lastmodifieddate",
+    "where": [
+      "t.recordtype = 'vendorbill'"
+    ],
+    "columns": {
+      "LastModDate": "lastmodifieddate"
+    },
+    "refs": {
+      "DepartmentRef": {
+        "column": "department",
+        "table": "department",
+        "nameColumn": "name"
+      },
+      "ClassRef": {
+        "column": "class",
+        "table": "classification",
+        "nameColumn": "name"
+      },
+      "CurrencyRef": {
+        "column": "currency",
+        "table": "currency",
+        "nameColumn": "name"
+      },
+      "AccountRef": {
+        "column": "account",
+        "table": "account",
+        "nameColumn": "acctname"
+      },
+      "EntityRef": {
+        "column": "entity",
+        "table": "entity",
+        "nameColumn": "altname"
+      }
+    },
+    "sublists": {
+      "CustomFieldList": {
+        "kind": "customFields",
+        "prefix": "custbody"
+      }
+    },
+    "unsupported": [],
+    "verified": false
+  },
+  "VendorPayment": {
+    "table": "transaction",
+    "alias": "t",
+    "keyColumn": "id",
+    "replication": "lastmodifieddate",
+    "where": [
+      "t.recordtype = 'vendorpayment'"
+    ],
+    "columns": {
+      "LastModDate": "lastmodifieddate"
+    },
+    "refs": {
+      "DepartmentRef": {
+        "column": "department",
+        "table": "department",
+        "nameColumn": "name"
+      },
+      "ClassRef": {
+        "column": "class",
+        "table": "classification",
+        "nameColumn": "name"
+      },
+      "CurrencyRef": {
+        "column": "currency",
+        "table": "currency",
+        "nameColumn": "name"
+      },
+      "AccountRef": {
+        "column": "account",
+        "table": "account",
+        "nameColumn": "acctname"
+      },
+      "EntityRef": {
+        "column": "entity",
+        "table": "entity",
+        "nameColumn": "altname"
+      }
+    },
+    "sublists": {
+      "CustomFieldList": {
+        "kind": "customFields",
+        "prefix": "custbody"
+      }
+    },
+    "unsupported": [],
+    "verified": false
+  },
+  "InventoryTransfer": {
+    "table": "transaction",
+    "alias": "t",
+    "keyColumn": "id",
+    "replication": "lastmodifieddate",
+    "where": [
+      "t.recordtype = 'inventorytransfer'"
+    ],
+    "columns": {
+      "LastModDate": "lastmodifieddate"
+    },
+    "refs": {
+      "ClassRef": {
+        "column": "class",
+        "table": "classification",
+        "nameColumn": "name"
+      },
+      "DepartmentRef": {
+        "column": "department",
+        "table": "department",
+        "nameColumn": "name"
+      },
+      "LocationRef": {
+        "column": "location",
+        "table": "location",
+        "nameColumn": "name"
+      },
+      "PostingPeriodRef": {
+        "column": "postingperiod",
+        "table": "accountingperiod",
+        "nameColumn": "periodname"
+      },
+      "SubsidiaryRef": {
+        "column": "subsidiary",
+        "table": "subsidiary",
+        "nameColumn": "name"
+      },
+      "TransferLocationRef": {
+        "column": "transferlocation",
+        "table": "location",
+        "nameColumn": "name"
+      }
+    },
+    "sublists": {
+      "InventoryList": {
+        "kind": "transactionLines",
+        "wrapper": "inventory"
+      },
+      "CustomFieldList": {
+        "kind": "customFields",
+        "prefix": "custbody"
+      }
+    },
+    "unsupported": [],
+    "verified": false
+  },
+  "InventoryAdjustment": {
+    "table": "transaction",
+    "alias": "t",
+    "keyColumn": "id",
+    "replication": "lastmodifieddate",
+    "where": [
+      "t.recordtype = 'inventoryadjustment'"
+    ],
+    "columns": {
+      "LastModDate": "lastmodifieddate"
+    },
+    "refs": {
+      "AccountRef": {
+        "column": "account",
+        "table": "account",
+        "nameColumn": "acctname"
+      },
+      "AdjLocationRef": {
+        "column": "adjlocation",
+        "table": "location",
+        "nameColumn": "name"
+      },
+      "ClassRef": {
+        "column": "class",
+        "table": "classification",
+        "nameColumn": "name"
+      },
+      "CustomerRef": {
+        "column": "entity",
+        "table": "entity",
+        "nameColumn": "altname"
+      },
+      "DepartmentRef": {
+        "column": "department",
+        "table": "department",
+        "nameColumn": "name"
+      },
+      "LocationRef": {
+        "column": "location",
+        "table": "location",
+        "nameColumn": "name"
+      },
+      "PostingPeriodRef": {
+        "column": "postingperiod",
+        "table": "accountingperiod",
+        "nameColumn": "periodname"
+      },
+      "SubsidiaryRef": {
+        "column": "subsidiary",
+        "table": "subsidiary",
+        "nameColumn": "name"
+      }
+    },
+    "sublists": {
+      "CustomFieldList": {
+        "kind": "customFields",
+        "prefix": "custbody"
+      }
+    },
+    "unsupported": [
+      "CustomFormRef"
+    ],
+    "verified": false
+  },
+  "SalesOrders": {
+    "table": "transaction",
+    "alias": "t",
+    "keyColumn": "id",
+    "replication": "lastmodifieddate",
+    "where": [
+      "t.recordtype = 'salesorder'"
+    ],
+    "columns": {
+      "DateCreated": "createddate"
+    },
+    "refs": {
+      "Department": {
+        "column": "department",
+        "table": "department",
+        "nameColumn": "name"
+      },
+      "Class": {
+        "column": "class",
+        "table": "classification",
+        "nameColumn": "name"
+      },
+      "Currency": {
+        "column": "currency",
+        "table": "currency",
+        "nameColumn": "name"
+      },
+      "Entity": {
+        "column": "entity",
+        "table": "entity",
+        "nameColumn": "altname"
+      },
+      "Location": {
+        "column": "location",
+        "table": "location",
+        "nameColumn": "name"
+      },
+      "Subsidiary": {
+        "column": "subsidiary",
+        "table": "subsidiary",
+        "nameColumn": "name"
+      },
+      "Job": {
+        "column": "job",
+        "table": "entity",
+        "nameColumn": "altname"
+      },
+      "Partner": {
+        "column": "partner",
+        "table": "entity",
+        "nameColumn": "altname"
+      },
+      "SalesRep": {
+        "column": "salesrep",
+        "table": "entity",
+        "nameColumn": "altname"
+      }
+    },
+    "sublists": {
+      "ItemList": {
+        "kind": "transactionLines",
+        "wrapper": "item"
+      },
+      "CustomFieldList": {
+        "kind": "customFields",
+        "prefix": "custbody"
+      }
+    },
+    "unsupported": [],
+    "verified": false
+  },
+  "CreditMemos": {
+    "table": "transaction",
+    "alias": "t",
+    "keyColumn": "id",
+    "replication": "lastmodifieddate",
+    "where": [
+      "t.recordtype = 'creditmemo'"
+    ],
+    "columns": {
+      "DateCreated": "createddate"
+    },
+    "refs": {
+      "Department": {
+        "column": "department",
+        "table": "department",
+        "nameColumn": "name"
+      },
+      "Class": {
+        "column": "class",
+        "table": "classification",
+        "nameColumn": "name"
+      },
+      "Currency": {
+        "column": "currency",
+        "table": "currency",
+        "nameColumn": "name"
+      },
+      "Account": {
+        "column": "account",
+        "table": "account",
+        "nameColumn": "acctname"
+      },
+      "Entity": {
+        "column": "entity",
+        "table": "entity",
+        "nameColumn": "altname"
+      },
+      "PostingPeriod": {
+        "column": "postingperiod",
+        "table": "accountingperiod",
+        "nameColumn": "periodname"
+      },
+      "Job": {
+        "column": "job",
+        "table": "entity",
+        "nameColumn": "altname"
+      },
+      "Location": {
+        "column": "location",
+        "table": "location",
+        "nameColumn": "name"
+      },
+      "Partner": {
+        "column": "partner",
+        "table": "entity",
+        "nameColumn": "altname"
+      },
+      "SalesRep": {
+        "column": "salesrep",
+        "table": "entity",
+        "nameColumn": "altname"
+      },
+      "Subsidiary": {
+        "column": "subsidiary",
+        "table": "subsidiary",
+        "nameColumn": "name"
+      }
+    },
+    "sublists": {
+      "ItemList": {
+        "kind": "transactionLines",
+        "wrapper": "item"
+      },
+      "ApplyList": {
+        "kind": "unsupported"
+      },
+      "CustomFieldList": {
+        "kind": "customFields",
+        "prefix": "custbody"
+      }
+    },
+    "unsupported": [],
+    "verified": false
+  },
+  "PurchaseOrder": {
+    "table": "transaction",
+    "alias": "t",
+    "keyColumn": "id",
+    "replication": "lastmodifieddate",
+    "where": [
+      "t.recordtype = 'purchaseorder'"
+    ],
+    "columns": {
+      "DateCreated": "createddate"
+    },
+    "refs": {
+      "Department": {
+        "column": "department",
+        "table": "department",
+        "nameColumn": "name"
+      },
+      "Class": {
+        "column": "class",
+        "table": "classification",
+        "nameColumn": "name"
+      },
+      "Currency": {
+        "column": "currency",
+        "table": "currency",
+        "nameColumn": "name"
+      },
+      "Entity": {
+        "column": "entity",
+        "table": "entity",
+        "nameColumn": "altname"
+      },
+      "Employee": {
+        "column": "employee",
+        "table": "entity",
+        "nameColumn": "altname"
+      },
+      "Location": {
+        "column": "location",
+        "table": "location",
+        "nameColumn": "name"
+      },
+      "Subsidiary": {
+        "column": "subsidiary",
+        "table": "subsidiary",
+        "nameColumn": "name"
+      }
+    },
+    "sublists": {
+      "ItemList": {
+        "kind": "transactionLines",
+        "wrapper": "item"
+      },
+      "ExpenseList": {
+        "kind": "unsupported"
+      },
+      "CustomFieldList": {
+        "kind": "customFields",
+        "prefix": "custbody"
+      }
+    },
+    "unsupported": [],
+    "verified": false
+  },
+  "InventoryItem": {
+    "table": "item",
+    "alias": "i",
+    "keyColumn": "id",
+    "replication": "lastmodifieddate",
+    "where": [
+      "i.itemtype = 'InvtPart'"
+    ],
+    "columns": {
+      "LastModDate": "lastmodifieddate",
+      "Name": "itemid"
+    },
+    "refs": {
+      "Department": {
+        "column": "department",
+        "table": "department",
+        "nameColumn": "name"
+      },
+      "Class": {
+        "column": "class",
+        "table": "classification",
+        "nameColumn": "name"
+      },
+      "Location": {
+        "column": "location",
+        "table": "location",
+        "nameColumn": "name"
+      },
+      "Parent": {
+        "column": "parent",
+        "table": "item",
+        "nameColumn": "itemid"
+      },
+      "Currency": {
+        "column": "currency",
+        "table": "currency",
+        "nameColumn": "name"
+      },
+      "Vendor": {
+        "column": "vendor",
+        "table": "entity",
+        "nameColumn": "altname"
+      }
+    },
+    "sublists": {
+      "CustomFieldList": {
+        "kind": "customFields",
+        "prefix": "custitem"
+      },
+      "AccountingBookDetailList": {
+        "kind": "unsupported"
+      },
+      "BinNumberList": {
+        "kind": "unsupported"
+      },
+      "HierarchyVersionsList": {
+        "kind": "unsupported"
+      },
+      "ItemOptionsList": {
+        "kind": "unsupported"
+      },
+      "ItemShipMethodList": {
+        "kind": "unsupported"
+      },
+      "ItemVendorList": {
+        "kind": "unsupported"
+      },
+      "LocationsList": {
+        "kind": "unsupported"
+      },
+      "MatrixOptionList": {
+        "kind": "unsupported"
+      },
+      "PresentationItemList": {
+        "kind": "unsupported"
+      },
+      "ProductFeedList": {
+        "kind": "unsupported"
+      },
+      "SiteCategoryList": {
+        "kind": "unsupported"
+      },
+      "SubsidiaryList": {
+        "kind": "unsupported"
+      },
+      "TranslationsList": {
+        "kind": "unsupported"
+      }
+    },
+    "unsupported": [],
+    "verified": false
+  },
+  "Items": {
+    "table": "item",
+    "alias": "i",
+    "keyColumn": "id",
+    "replication": "lastmodifieddate",
+    "where": [],
+    "columns": {
+      "Name": "itemid"
+    },
+    "refs": {
+      "Department": {
+        "column": "department",
+        "table": "department",
+        "nameColumn": "name"
+      },
+      "Class": {
+        "column": "class",
+        "table": "classification",
+        "nameColumn": "name"
+      },
+      "Location": {
+        "column": "location",
+        "table": "location",
+        "nameColumn": "name"
+      },
+      "Parent": {
+        "column": "parent",
+        "table": "item",
+        "nameColumn": "itemid"
+      }
+    },
+    "sublists": {
+      "CustomFieldList": {
+        "kind": "customFields",
+        "prefix": "custitem"
+      },
+      "AccountingBookDetailList": {
+        "kind": "unsupported"
+      },
+      "ItemOptionsList": {
+        "kind": "unsupported"
+      },
+      "ItemShipMethodList": {
+        "kind": "unsupported"
+      },
+      "MatrixOptionList": {
+        "kind": "unsupported"
+      },
+      "NullFieldList": {
+        "kind": "unsupported"
+      },
+      "PresentationItemList": {
+        "kind": "unsupported"
+      },
+      "ProductFeedList": {
+        "kind": "unsupported"
+      },
+      "SiteCategoryList": {
+        "kind": "unsupported"
+      },
+      "SubsidiaryList": {
+        "kind": "unsupported"
+      },
+      "TranslationsList": {
+        "kind": "unsupported"
+      }
+    },
+    "unsupported": [],
+    "verified": false
+  }
+}

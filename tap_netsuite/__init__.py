@@ -47,23 +47,57 @@ import requests
 
 LOGGER = singer.get_logger()
 
-REQUIRED_CONFIG_KEYS = [
+BASE_REQUIRED_CONFIG_KEYS = [
     'ns_account',
-    'ns_consumer_key',
-    'ns_consumer_secret',
-    'ns_token_key',
-    'ns_token_secret',
     'select_fields_by_default'
 ]
 
+# Required config depends on how the connection authenticates, so it cannot be a single static
+# list. TBA needs the four OAuth 1.0 secrets; OAuth 2.0 needs the client credentials identifiers
+# plus the certificate private key used to sign the assertion.
+REQUIRED_CONFIG_KEYS_BY_AUTH_METHOD = {
+    netsuite.AUTH_METHOD_TBA: BASE_REQUIRED_CONFIG_KEYS + [
+        'ns_consumer_key',
+        'ns_consumer_secret',
+        'ns_token_key',
+        'ns_token_secret'
+    ],
+    netsuite.AUTH_METHOD_OAUTH2: BASE_REQUIRED_CONFIG_KEYS + [
+        'ns_client_id',
+        'ns_certificate_id',
+        'ns_private_key'
+    ]
+}
+
 CONFIG = {
     'ns_account': None,
+    'ns_auth_method': None,
     'ns_consumer_key': None,
     'ns_consumer_secret': None,
     'ns_token_key': None,
     'ns_token_secret': None,
+    'ns_client_id': None,
+    'ns_certificate_id': None,
+    'ns_private_key': None,
     'start_date': None
 }
+
+
+def required_config_keys(raw_config):
+    """Config keys required for the auth method named in the config.
+
+    Connections created before OAuth 2.0 support have no ``ns_auth_method``, so an absent value
+    means token-based authentication.
+    """
+    auth_method = (raw_config or {}).get('ns_auth_method') or netsuite.AUTH_METHOD_TBA
+
+    if auth_method not in REQUIRED_CONFIG_KEYS_BY_AUTH_METHOD:
+        raise SymonException(
+            f'Unknown NetSuite authentication method: {auth_method}.',
+            'netSuite.NetSuiteUnknownAuthMethod'
+        )
+
+    return REQUIRED_CONFIG_KEYS_BY_AUTH_METHOD[auth_method]
 
 REPLICATION_KEY = ["lastModifiedDate", "LastModifiedDate", "LastModDate"]
 
@@ -291,7 +325,10 @@ def do_discover(ns):
 
 
 def main_impl():
-    args = singer_utils.parse_args(REQUIRED_CONFIG_KEYS)
+    # Which config keys are mandatory depends on the auth method named inside the config, so the
+    # arguments are parsed first and validated afterwards.
+    args = singer_utils.parse_args([])
+    singer_utils.check_config(args.config, required_config_keys(args.config))
 
     CONFIG.update(args.config)
     LOGGER.debug(f"NetSuite CONFIG IS {json.dumps(CONFIG)}")
@@ -306,9 +343,13 @@ def main_impl():
                       ns_token_secret=CONFIG.get('ns_token_secret'),
                       is_sandbox=CONFIG.get('is_sandbox'),
                       default_start_date=CONFIG.get('start_date'),
-                      select_fields_by_default=CONFIG.get('select_fields_by_default'), )
+                      select_fields_by_default=CONFIG.get('select_fields_by_default'),
+                      ns_auth_method=CONFIG.get('ns_auth_method'),
+                      ns_client_id=CONFIG.get('ns_client_id'),
+                      ns_certificate_id=CONFIG.get('ns_certificate_id'),
+                      ns_private_key=CONFIG.get('ns_private_key'), )
         try:
-            ns.connect_tba()
+            ns.connect()
         except (requests.exceptions.ConnectionError) as e:
             message = str(e)
             if 'Name or service not known' in message or 'nodename nor servname provided, or not known' in message:
