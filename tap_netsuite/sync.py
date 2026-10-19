@@ -13,17 +13,11 @@ LOGGER = singer.get_logger()
 
 
 def transform_data_hook():
-    """Schema-driven value coercions.
-
-    Records arrive from the data source already keyed by catalog display name, so this hook is
-    transport-agnostic: it only reconciles value shapes that NetSuite returns but the emitted
-    schema does not allow.
-    """
+    """Coerce values to the catalog schema."""
     def pre_hook(data, typ, schema):
         result = data
 
-        # Reference and sublist fields are typed as strings in the catalog but arrive as nested
-        # structures. Serialize them rather than emit a schema violation.
+        # Serialize nested references and sublists stored as strings.
         if isinstance(data, dict) and not typ == 'object':
             result = json.dumps(data, default=str)
 

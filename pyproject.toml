@@ -13,7 +13,7 @@ requests = "^2.33.0"
 singer-python = "6.3.0"
 jsonpath-ng = "^1.5.3"
 lxml = "^6.1.0"
-# RS256 JWT assertions for the NetSuite OAuth 2.0 client credentials flow.
+# NetSuite OAuth JWT signing.
 pyjwt = "^2.13.0"
 cryptography = "^50.0.1"
 zeep = "^4.3.3"

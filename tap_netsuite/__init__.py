@@ -52,9 +52,7 @@ BASE_REQUIRED_CONFIG_KEYS = [
     'select_fields_by_default'
 ]
 
-# Required config depends on how the connection authenticates, so it cannot be a single static
-# list. TBA needs the four OAuth 1.0 secrets; OAuth 2.0 needs the client credentials identifiers
-# plus the certificate private key used to sign the assertion.
+# Required keys depend on the authentication method.
 REQUIRED_CONFIG_KEYS_BY_AUTH_METHOD = {
     netsuite.AUTH_METHOD_TBA: BASE_REQUIRED_CONFIG_KEYS + [
         'ns_consumer_key',
@@ -84,11 +82,7 @@ CONFIG = {
 
 
 def required_config_keys(raw_config):
-    """Config keys required for the auth method named in the config.
-
-    Connections created before OAuth 2.0 support have no ``ns_auth_method``, so an absent value
-    means token-based authentication.
-    """
+    """Return required keys for the selected authentication method."""
     auth_method = (raw_config or {}).get('ns_auth_method') or netsuite.AUTH_METHOD_TBA
 
     if auth_method not in REQUIRED_CONFIG_KEYS_BY_AUTH_METHOD:
@@ -325,8 +319,7 @@ def do_discover(ns):
 
 
 def main_impl():
-    # Which config keys are mandatory depends on the auth method named inside the config, so the
-    # arguments are parsed first and validated afterwards.
+    # Parse first, then validate authentication-specific keys.
     args = singer_utils.parse_args([])
     singer_utils.check_config(args.config, required_config_keys(args.config))
 

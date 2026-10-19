@@ -1,19 +1,4 @@
-"""REST/SuiteQL data source, authenticated with OAuth 2.0 client credentials.
-
-This is the forward-looking transport. It reproduces the record shapes the SOAP path emits so
-that existing downstream pipelines keep working after a customer re-creates their connection:
-
-* scalar fields come from mapped SuiteQL columns;
-* fields SOAP returns as a nested ``RecordRef`` are selected as an id plus a joined name and
-  reassembled into the same nested dict;
-* ``CustomFieldList`` is rebuilt from the account's custom columns, which are discovered at
-  runtime because they differ per account;
-* transaction sublists are fetched per page from ``transactionline`` and grouped back onto their
-  parent record.
-
-Column expressions live in ``schemas/object_definition.json`` under ``suiteqlExpr``; see
-``scripts/generate_suiteql_mapping.py``.
-"""
+"""REST/SuiteQL data source for OAuth 2.0 connections."""
 import os
 import re
 from collections import defaultdict
@@ -29,7 +14,7 @@ LOGGER = singer.get_logger()
 
 BARE_IDENTIFIER = re.compile(r'^[A-Za-z_][A-Za-z0-9_]*$')
 
-# Oracle caps an IN list at 1000 entries; stay well inside it.
+# Keep IN lists below Oracle's 1,000-item limit.
 SUBLIST_BATCH_SIZE = 500
 
 STREAM_METADATA_FILENAME = 'suiteql_streams.json'
@@ -52,12 +37,7 @@ TRANSACTION_LINE_COLUMNS = _RAW_STREAM_METADATA.get('_transactionLineColumns', [
 
 
 def qualify(expression, alias):
-    """Prefix a bare column name with the primary table alias.
-
-    Joins bring in columns like ``name`` that exist on several tables, so unqualified references
-    would be ambiguous. Anything that is not a plain identifier is assumed to be a complete
-    expression already.
-    """
+    """Qualify a bare column with a table alias."""
     if BARE_IDENTIFIER.match(expression):
         return f'{alias}.{expression}'
     return expression
@@ -128,8 +108,7 @@ class SuiteQLDataSource(DataSource):
             page_size=self.page_size
         )
 
-        # Mint a token now so credential problems surface with an actionable message rather than
-        # partway through the first stream.
+        # Validate credentials before the first stream.
         self.token_manager.access_token()
 
     def stream_metadata(self, stream):
@@ -150,7 +129,7 @@ class SuiteQLDataSource(DataSource):
             yield self._assemble_page(page, plan)
 
     def _build_plan(self, stream, metadata, display_names, start_date):
-        """Turn the catalog's requested fields into a query plus assembly instructions."""
+        """Build a SuiteQL query from catalog fields."""
         alias = metadata['alias']
         fields_by_display_name = {
             field['displayName']: field
@@ -191,8 +170,7 @@ class SuiteQLDataSource(DataSource):
                 refs[display_name] = (id_key, name_key)
 
             elif kind == 'customFields':
-                # Custom fields are ordinary columns in SuiteQL, so they are selected inline with
-                # everything else rather than costing an extra round trip per page.
+                # Select custom fields in the main query.
                 custom_columns = self._custom_columns(metadata['table'], expression['prefix'])
                 keys = {}
                 for offset, column in enumerate(custom_columns):
@@ -244,7 +222,7 @@ class SuiteQLDataSource(DataSource):
         }
 
     def _assemble_page(self, rows, plan):
-        """Rebuild SOAP-shaped records from a flat SuiteQL page."""
+        """Build SOAP-compatible records from SuiteQL rows."""
         key_alias = plan['query'].key_alias
         records = []
 
@@ -307,7 +285,7 @@ class SuiteQLDataSource(DataSource):
 
     @staticmethod
     def _build_ref(internal_id, name):
-        """Mirror the shape zeep produces for a SOAP RecordRef."""
+        """Build a SOAP-style record reference."""
         if internal_id is None and name is None:
             return None
         return {
@@ -318,11 +296,7 @@ class SuiteQLDataSource(DataSource):
         }
 
     def _custom_columns(self, table, prefix):
-        """Discover the account's custom columns on a table.
-
-        Custom fields are real columns in SuiteQL rather than a separate sublist, and which ones
-        exist is account-specific, so probe a single row and keep the matching column names.
-        """
+        """Find account-specific custom columns."""
         cache_key = (table, prefix)
         if cache_key in self._custom_columns_by_table:
             return self._custom_columns_by_table[cache_key]

@@ -8,9 +8,7 @@ from tap_netsuite.netsuite.exceptions import SymonException
 
 LOGGER = singer.get_logger()
 
-# Authentication methods, matching the values the connection service stores on the connection.
-# The transport follows from the method: Oracle does not support OAuth 2.0 for SOAP web
-# services, so OAuth 2.0 connections read through REST/SuiteQL.
+# TBA uses SOAP; OAuth 2.0 uses REST/SuiteQL.
 AUTH_METHOD_TBA = 'tba'
 AUTH_METHOD_OAUTH2 = 'oauth2ClientCredentials'
 
@@ -140,12 +138,7 @@ class NetSuite:
             return NS_OBJECT_DEFINITIONS[sobject]
 
     def connect(self, caching=True):
-        """Open a connection using whichever transport the auth method implies.
-
-        The data sources are imported here rather than at module scope so that each one only
-        pulls in its own transport stack: the SOAP path needs zeep and the NetSuite SDK, the
-        SuiteQL path needs neither.
-        """
+        """Connect using the configured authentication method."""
         if self.ns_auth_method == AUTH_METHOD_OAUTH2:
             from tap_netsuite.netsuite.suiteql_datasource import SuiteQLDataSource
 
@@ -179,7 +172,7 @@ class NetSuite:
         self.data_source.connect()
 
     def connect_tba(self, caching=True):
-        """Backwards-compatible alias for the token-based authentication path."""
+        """Connect using TBA for compatibility."""
         self.ns_auth_method = AUTH_METHOD_TBA
         self.connect(caching=caching)
 

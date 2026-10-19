@@ -1,10 +1,4 @@
-"""SOAP SuiteTalk data source, authenticated with token-based authentication (TBA).
-
-This is the legacy transport. NetSuite blocks new TBA integration records from 2027.1, stops
-honouring TBA credentials in 2028.1, and removes SOAP web services entirely in 2028.2, so this
-path exists only to keep established connections running until customers move to
-``SuiteQLDataSource``.
-"""
+"""SOAP data source for legacy TBA connections."""
 import types
 
 import singer
@@ -70,8 +64,7 @@ class SoapDataSource(DataSource):
 
     @staticmethod
     def _as_pages(result):
-        """Normalise the SDK's return value, which is a page generator for paginated entities
-        and a bare collection for the rest."""
+        """Return the SDK result as pages."""
         if isinstance(result, types.GeneratorType):
             return result
         if result is None:

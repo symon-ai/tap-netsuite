@@ -1,15 +1,4 @@
-"""SuiteQL query execution over the NetSuite REST query service.
-
-The service has hard limits that shape how extraction has to work:
-
-* at most 1,000 rows per response;
-* at most 100,000 rows reachable through ``offset``, so offset paging cannot walk a large table;
-* 300 seconds per call.
-
-Because of the offset ceiling we paginate by key instead: every query is ordered by its key
-column and each page asks for rows beyond the last key seen. That is stable under concurrent
-writes as well, which plain offset paging is not.
-"""
+"""Execute paginated SuiteQL queries over REST."""
 import time
 
 import requests
@@ -22,10 +11,10 @@ LOGGER = singer.get_logger()
 
 QUERY_PATH = '/services/rest/query/v1/suiteql'
 
-# The service rejects anything above 1,000.
+# NetSuite allows up to 1,000 rows per response.
 MAX_PAGE_SIZE = 1000
 
-# NetSuite's own limit is 300s; allow a little headroom for connection setup.
+# Keep below NetSuite's 300-second limit.
 REQUEST_TIMEOUT_SECONDS = 330
 
 RETRY_STATUS_CODES = (429, 500, 502, 503, 504)
@@ -34,15 +23,7 @@ RETRY_BACKOFF_SECONDS = 2
 
 
 class SuiteQLQuery:
-    """A single stream's query, rendered fresh for each page.
-
-    ``select`` maps result aliases to SuiteQL expressions. Aliases are what come back as JSON
-    keys, so they are also the join point with the catalog's field mapping.
-
-    ``key_column`` is the SQL expression ordered and filtered on for keyset pagination, while
-    ``key_alias`` is the response key the resulting value is read back from. They differ whenever
-    the key is table-qualified, which it always is once joins are involved.
-    """
+    """Build SuiteQL statements for one stream."""
 
     KEY_ALIAS = 'keycol'
 
@@ -53,7 +34,7 @@ class SuiteQLQuery:
         self.key_alias = key_alias or self.KEY_ALIAS
         self.where = list(where or [])
 
-        # Pagination reads the key back out of every row, so make sure it is selected.
+        # Include the key needed for pagination.
         self.select.setdefault(self.key_alias, key_column)
 
     def select_list(self):
@@ -77,11 +58,7 @@ class SuiteQLQuery:
 
 
 def _sql_literal(value):
-    """Render a key value as a SuiteQL literal.
-
-    NetSuite returns internal IDs as JSON strings even though the underlying column is numeric,
-    so numeric-looking keys are emitted unquoted to keep the comparison on the indexed type.
-    """
+    """Format a value for a SuiteQL query."""
     try:
         return str(int(value))
     except (TypeError, ValueError):
@@ -90,11 +67,7 @@ def _sql_literal(value):
 
 
 def incremental_predicate(column, start_date):
-    """Build the ``lastmodifieddate`` filter for an incremental stream.
-
-    NetSuite requires ``TO_DATE`` for date comparisons; a bare string literal forces an implicit
-    conversion that defeats the index.
-    """
+    """Build a last-modified filter."""
     if not start_date:
         return None
 
@@ -121,14 +94,11 @@ class SuiteQLClient:
         return f'{service_base_url(self.account_id)}{QUERY_PATH}'
 
     def execute(self, sql):
-        """Run one statement and return its rows, without pagination.
-
-        Used for metadata probes where a single page is all that is needed.
-        """
+        """Run one query without pagination."""
         return (self._post(sql).get('items') or [])
 
     def iter_pages(self, query):
-        """Yield pages of rows for a query, paginating by key column."""
+        """Yield keyset-paginated pages."""
         after_key = None
         pages = 0
 
@@ -149,8 +119,7 @@ class SuiteQLClient:
 
             next_key = items[-1].get(query.key_alias)
             if next_key is None:
-                # Without a key we cannot advance safely; stopping beats silently looping on the
-                # same page forever.
+                # Stop if the response has no pagination key.
                 LOGGER.warning(
                     'SuiteQL response is missing key column %s; stopping pagination after %s pages',
                     query.key_alias, pages
@@ -185,7 +154,7 @@ class SuiteQLClient:
             return response.json()
 
         if response.status_code == 401:
-            # The token was rejected before our computed expiry. Re-mint once, then give up.
+            # Refresh once if NetSuite rejects the token.
             if attempt == 1:
                 LOGGER.info('NetSuite rejected the access token; re-minting and retrying')
                 self.token_manager.invalidate()

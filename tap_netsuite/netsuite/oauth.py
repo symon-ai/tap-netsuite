@@ -1,12 +1,4 @@
-"""OAuth 2.0 client credentials (machine-to-machine) token minting for NetSuite.
-
-NetSuite's client credentials flow authenticates with a PS256-signed JWT assertion rather than
-a client secret. Access tokens are valid for 60 minutes and there is no refresh token: when one
-expires the flow is simply restarted. Since a large sync easily outlives a single token, this
-manager mints tokens on demand and re-mints them shortly before expiry.
-
-See "OAuth 2.0 Client Credentials Flow" in the NetSuite help centre.
-"""
+"""Create and cache NetSuite OAuth 2.0 access tokens."""
 import time
 
 import jwt
@@ -19,25 +11,23 @@ LOGGER = singer.get_logger()
 
 TOKEN_PATH = '/services/rest/auth/oauth2/v1/token'
 CLIENT_ASSERTION_TYPE = 'urn:ietf:params:oauth:client-assertion-type:jwt-bearer'
-# NetSuite ended RSA PKCS#1 v1.5 (RS256) for M2M OAuth on 2025-03-01; PS256 is required.
+# NetSuite requires PS256 for M2M OAuth.
 SIGNING_ALGORITHM = 'PS256'
 
-# Scope enabled on the integration record. REST web services covers both the SuiteQL query
-# service and the record API.
+# REST web services scope.
 DEFAULT_SCOPE = ['rest_webservices']
 
-# NetSuite caps assertion lifetime at one hour.
+# NetSuite's maximum assertion lifetime.
 ASSERTION_TTL_SECONDS = 3600
 
-# Re-mint this long before the token actually expires so an in-flight request cannot land on a
-# token that expires mid-call. NetSuite's SuiteQL timeout is 300 seconds.
+# Renew six minutes early for long requests.
 EXPIRY_SKEW_SECONDS = 360
 
 SANDBOX_ACCOUNT_SUFFIX = '_SB1'
 
 
 def resolve_account_id(account, is_sandbox=False):
-    """Account identifier as NetSuite spells it, including the sandbox suffix."""
+    """Return the account ID, including the sandbox suffix."""
     if account is None:
         return None
     if is_sandbox is True and not account.upper().endswith(SANDBOX_ACCOUNT_SUFFIX):
@@ -46,12 +36,7 @@ def resolve_account_id(account, is_sandbox=False):
 
 
 def account_host(account_id):
-    """REST hostname component for an account.
-
-    NetSuite's REST domains lowercase the account identifier and use hyphens where the
-    identifier uses underscores, so account ``1234567_SB1`` is served from
-    ``1234567-sb1.suitetalk.api.netsuite.com``.
-    """
+    """Return the REST hostname account component."""
     return account_id.lower().replace('_', '-')
 
 
@@ -82,17 +67,13 @@ class NetSuiteOAuthTokenManager:
         return f'{service_base_url(self.account_id)}{TOKEN_PATH}'
 
     def access_token(self):
-        """A currently valid access token, minting a new one when needed."""
+        """Return a valid token, minting one if needed."""
         if self._access_token is None or time.time() >= self._expires_at:
             self._mint()
         return self._access_token
 
     def invalidate(self):
-        """Drop the cached token so the next call re-mints.
-
-        Used when NetSuite rejects a token that has not yet reached our computed expiry, which
-        can happen after a clock skew or an administrator revoking the certificate mapping.
-        """
+        """Clear the cached token."""
         self._access_token = None
         self._expires_at = 0
 
@@ -166,11 +147,7 @@ class NetSuiteOAuthTokenManager:
 
     @staticmethod
     def _token_error(response):
-        """Translate a token endpoint failure into an actionable message.
-
-        NetSuite reports most setup mistakes as ``invalid_client`` or ``invalid_grant`` with no
-        further detail, so the message has to cover the plausible causes.
-        """
+        """Convert a token error to a user-facing exception."""
         try:
             body = response.json()
         except ValueError:
