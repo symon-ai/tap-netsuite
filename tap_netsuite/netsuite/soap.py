@@ -12,7 +12,7 @@ LOGGER = singer.get_logger()
 SANDBOX_ACCOUNT_SUFFIX = '_SB1'
 
 
-class SoapDataSource(DataSource):
+class Soap(DataSource):
     def __init__(self,
                  object_definitions,
                  account=None,

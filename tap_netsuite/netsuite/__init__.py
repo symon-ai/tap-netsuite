@@ -5,7 +5,7 @@ from typing import Dict
 import singer.utils as singer_utils
 from singer import metadata, metrics
 from tap_netsuite.netsuite.exceptions import SymonException
-from tap_netsuite.netsuite.soap_datasource import SoapDataSource
+from tap_netsuite.netsuite.soap import Soap
 from tap_netsuite.netsuite.suiteql_datasource import SuiteQLDataSource
 
 LOGGER = singer.get_logger()
@@ -151,7 +151,7 @@ class NetSuite:
                 is_sandbox=self.is_sandbox
             )
         elif self.ns_auth_method == AUTH_METHOD_TBA:
-            self.data_source = SoapDataSource(
+            self.data_source = Soap(
                 NS_OBJECT_DEFINITIONS,
                 account=self.ns_account,
                 consumer_key=self.ns_consumer_key,
