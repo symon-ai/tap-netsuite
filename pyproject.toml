@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "tap-netsuite"
-version = "2.5.0"
+version = "2.6.0"
 description = "Singer.io tap for extracting data for NetSuite"
 authors = ["Stitch"]
 classifiers = ["Programming Language :: Python :: 3 :: Only"]
@@ -13,6 +13,9 @@ requests = "^2.33.0"
 singer-python = "6.3.0"
 jsonpath-ng = "^1.5.3"
 lxml = "^6.1.0"
+# NetSuite OAuth JWT signing.
+pyjwt = "^2.13.0"
+cryptography = "^50.0.1"
 zeep = "^4.3.3"
 
 [tool.poetry.dev-dependencies]
