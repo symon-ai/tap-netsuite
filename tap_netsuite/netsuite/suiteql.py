@@ -79,7 +79,8 @@ def incremental_predicate(column, start_date):
     timestamp = timestamp.strip()
 
     escaped = timestamp.replace("'", "''")
-    return f"{column} >= TO_DATE('{escaped}', 'YYYY-MM-DD HH24:MI:SS')"
+    format_mask = 'YYYY-MM-DD' if len(timestamp) == 10 else 'YYYY-MM-DD HH24:MI:SS'
+    return f"{column} >= TO_DATE('{escaped}', '{format_mask}')"
 
 
 class SuiteQLClient:

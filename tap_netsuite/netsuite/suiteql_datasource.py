@@ -267,7 +267,11 @@ class SuiteQLDataSource(DataSource):
                     select=select,
                     from_clause=f'{TRANSACTION_LINE_TABLE} {TRANSACTION_LINE_ALIAS}',
                     key_column=f'{TRANSACTION_LINE_ALIAS}.id',
-                    where=[f'{TRANSACTION_LINE_ALIAS}.transaction IN ({_in_list(batch)})']
+                    where=[
+                        f'{TRANSACTION_LINE_ALIAS}.transaction IN ({_in_list(batch)})',
+                        f"{TRANSACTION_LINE_ALIAS}.mainline = 'F'",
+                        f"{TRANSACTION_LINE_ALIAS}.taxline = 'F'"
+                    ]
                 )
 
                 for page in self.client.iter_pages(query):
