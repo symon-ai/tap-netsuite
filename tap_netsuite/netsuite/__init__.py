@@ -5,6 +5,8 @@ from typing import Dict
 import singer.utils as singer_utils
 from singer import metadata, metrics
 from tap_netsuite.netsuite.exceptions import SymonException
+from tap_netsuite.netsuite.soap_datasource import SoapDataSource
+from tap_netsuite.netsuite.suiteql_datasource import SuiteQLDataSource
 
 LOGGER = singer.get_logger()
 
@@ -140,8 +142,6 @@ class NetSuite:
     def connect(self, caching=True):
         """Connect using the configured authentication method."""
         if self.ns_auth_method == AUTH_METHOD_OAUTH2:
-            from tap_netsuite.netsuite.suiteql_datasource import SuiteQLDataSource
-
             self.data_source = SuiteQLDataSource(
                 NS_OBJECT_DEFINITIONS,
                 account=self.ns_account,
@@ -151,8 +151,6 @@ class NetSuite:
                 is_sandbox=self.is_sandbox
             )
         elif self.ns_auth_method == AUTH_METHOD_TBA:
-            from tap_netsuite.netsuite.soap_datasource import SoapDataSource
-
             self.data_source = SoapDataSource(
                 NS_OBJECT_DEFINITIONS,
                 account=self.ns_account,
