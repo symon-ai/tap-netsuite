@@ -108,7 +108,8 @@ class NetSuite:
                  ns_auth_method=None,
                  ns_client_id=None,
                  ns_certificate_id=None,
-                 ns_private_key=None):
+                 ns_private_key=None,
+                 ns_access_token=None):
 
         self.ns_account = ns_account
         self.ns_consumer_key = ns_consumer_key
@@ -121,6 +122,7 @@ class NetSuite:
         self.ns_client_id = ns_client_id
         self.ns_certificate_id = ns_certificate_id
         self.ns_private_key = ns_private_key
+        self.ns_access_token = ns_access_token
         self.select_fields_by_default = select_fields_by_default is True or (
                 isinstance(select_fields_by_default, str) and select_fields_by_default.lower() == 'true')
 
@@ -148,6 +150,7 @@ class NetSuite:
                 client_id=self.ns_client_id,
                 certificate_id=self.ns_certificate_id,
                 private_key=self.ns_private_key,
+                access_token=self.ns_access_token,
                 is_sandbox=self.is_sandbox
             )
         elif self.ns_auth_method == AUTH_METHOD_TBA:

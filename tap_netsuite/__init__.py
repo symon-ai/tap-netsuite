@@ -77,6 +77,7 @@ CONFIG = {
     'ns_client_id': None,
     'ns_certificate_id': None,
     'ns_private_key': None,
+    'ns_access_token': None,
     'start_date': None
 }
 
@@ -340,7 +341,8 @@ def main_impl():
                       ns_auth_method=CONFIG.get('ns_auth_method'),
                       ns_client_id=CONFIG.get('ns_client_id'),
                       ns_certificate_id=CONFIG.get('ns_certificate_id'),
-                      ns_private_key=CONFIG.get('ns_private_key'), )
+                      ns_private_key=CONFIG.get('ns_private_key'),
+                      ns_access_token=CONFIG.get('ns_access_token'))
         try:
             ns.connect()
         except (requests.exceptions.ConnectionError) as e:

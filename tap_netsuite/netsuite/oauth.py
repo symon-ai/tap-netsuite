@@ -50,6 +50,7 @@ class NetSuiteOAuthTokenManager:
                  client_id,
                  certificate_id,
                  private_key,
+                 access_token=None,
                  scope=None,
                  session=None):
         self.account_id = account_id
@@ -59,8 +60,11 @@ class NetSuiteOAuthTokenManager:
         self.scope = scope or DEFAULT_SCOPE
         self.session = session or requests.Session()
 
-        self._access_token = None
-        self._expires_at = 0
+        self._access_token = access_token
+        if access_token:
+            self._expires_at = time.time() + ASSERTION_TTL_SECONDS - EXPIRY_SKEW_SECONDS
+        else:
+            self._expires_at = 0
 
     @property
     def token_url(self):

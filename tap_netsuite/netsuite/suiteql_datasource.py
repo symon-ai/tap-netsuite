@@ -66,6 +66,7 @@ class SuiteQLDataSource(DataSource):
                  client_id=None,
                  certificate_id=None,
                  private_key=None,
+                 access_token=None,
                  is_sandbox=False,
                  page_size=MAX_PAGE_SIZE):
         super().__init__(object_definitions)
@@ -74,6 +75,7 @@ class SuiteQLDataSource(DataSource):
         self.client_id = client_id
         self.certificate_id = certificate_id
         self.private_key = private_key
+        self.access_token = access_token
         self.page_size = page_size
 
         self.token_manager = None
@@ -100,7 +102,8 @@ class SuiteQLDataSource(DataSource):
             account_id=self.account_id,
             client_id=self.client_id,
             certificate_id=self.certificate_id,
-            private_key=self.private_key
+            private_key=self.private_key,
+            access_token=self.access_token
         )
         self.client = SuiteQLClient(
             account_id=self.account_id,
