@@ -7,7 +7,7 @@ import singer
 
 from .datasource import DataSource
 from .exceptions import SymonException
-from .oauth import NetSuiteOAuthTokenManager, resolve_account_id
+from .oauth import NetSuiteOAuthAuthorizationCodeTokenManager, resolve_account_id
 from .suiteql import MAX_PAGE_SIZE, SuiteQLClient, SuiteQLQuery, incremental_predicate
 
 LOGGER = singer.get_logger()
@@ -64,18 +64,18 @@ class SuiteQLDataSource(DataSource):
                  object_definitions,
                  account=None,
                  client_id=None,
-                 certificate_id=None,
-                 private_key=None,
                  access_token=None,
+                 client_secret=None,
+                 refresh_token=None,
                  is_sandbox=False,
                  page_size=MAX_PAGE_SIZE):
         super().__init__(object_definitions)
 
         self.account_id = resolve_account_id(account, is_sandbox)
         self.client_id = client_id
-        self.certificate_id = certificate_id
-        self.private_key = private_key
         self.access_token = access_token
+        self.client_secret = client_secret
+        self.refresh_token = refresh_token
         self.page_size = page_size
 
         self.token_manager = None
@@ -87,8 +87,8 @@ class SuiteQLDataSource(DataSource):
             name for name, value in (
                 ('account ID', self.account_id),
                 ('client ID', self.client_id),
-                ('certificate ID', self.certificate_id),
-                ('certificate private key', self.private_key)
+                ('client secret', self.client_secret),
+                ('access token', self.access_token)
             ) if not value
         ]
         if missing:
@@ -98,11 +98,11 @@ class SuiteQLDataSource(DataSource):
                 'netSuite.NetSuiteMissingOAuthConfig'
             )
 
-        self.token_manager = NetSuiteOAuthTokenManager(
+        self.token_manager = NetSuiteOAuthAuthorizationCodeTokenManager(
             account_id=self.account_id,
             client_id=self.client_id,
-            certificate_id=self.certificate_id,
-            private_key=self.private_key,
+            client_secret=self.client_secret,
+            refresh_token=self.refresh_token,
             access_token=self.access_token
         )
         self.client = SuiteQLClient(

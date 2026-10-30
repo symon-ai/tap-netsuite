@@ -12,7 +12,7 @@ LOGGER = singer.get_logger()
 
 # TBA uses SOAP; OAuth 2.0 uses REST/SuiteQL.
 AUTH_METHOD_TBA = 'tba'
-AUTH_METHOD_OAUTH2 = 'oauth2ClientCredentials'
+AUTH_METHOD_OAUTH2 = 'oauth2AuthorizationCode'
 
 
 def _get_abs_path(path: str) -> str:
@@ -107,9 +107,9 @@ class NetSuite:
                  default_start_date=None,
                  ns_auth_method=None,
                  ns_client_id=None,
-                 ns_certificate_id=None,
-                 ns_private_key=None,
-                 ns_access_token=None):
+                 ns_access_token=None,
+                 ns_refresh_token=None,
+                 ns_client_secret=None):
 
         self.ns_account = ns_account
         self.ns_consumer_key = ns_consumer_key
@@ -120,9 +120,9 @@ class NetSuite:
 
         self.ns_auth_method = ns_auth_method or AUTH_METHOD_TBA
         self.ns_client_id = ns_client_id
-        self.ns_certificate_id = ns_certificate_id
-        self.ns_private_key = ns_private_key
         self.ns_access_token = ns_access_token
+        self.ns_refresh_token = ns_refresh_token
+        self.ns_client_secret = ns_client_secret
         self.select_fields_by_default = select_fields_by_default is True or (
                 isinstance(select_fields_by_default, str) and select_fields_by_default.lower() == 'true')
 
@@ -148,8 +148,8 @@ class NetSuite:
                 NS_OBJECT_DEFINITIONS,
                 account=self.ns_account,
                 client_id=self.ns_client_id,
-                certificate_id=self.ns_certificate_id,
-                private_key=self.ns_private_key,
+                client_secret=self.ns_client_secret,
+                refresh_token=self.ns_refresh_token,
                 access_token=self.ns_access_token,
                 is_sandbox=self.is_sandbox
             )
