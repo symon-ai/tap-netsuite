@@ -1,4 +1,5 @@
 """OAuth 2.0 authorization-code token refresh for NetSuite REST/SuiteQL."""
+import base64
 import time
 
 import requests
@@ -114,15 +115,17 @@ class NetSuiteOAuthAuthorizationCodeTokenManager:
             )
 
         try:
+            credentials = f'{self.client_id}:{self.client_secret}'.encode('utf-8')
             response = self.session.post(
                 self.token_url,
                 data={
                     'grant_type': 'refresh_token',
-                    'refresh_token': self.refresh_token,
-                    'client_id': self.client_id,
-                    'client_secret': self.client_secret
+                    'refresh_token': self.refresh_token
                 },
-                headers={'Content-Type': 'application/x-www-form-urlencoded'},
+                headers={
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'Authorization': f'Basic {base64.b64encode(credentials).decode("ascii")}'
+                },
                 timeout=60
             )
         except requests.exceptions.ConnectionError as e:
