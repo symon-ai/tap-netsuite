@@ -43,8 +43,8 @@
       "name": "entityStatus",
       "type": "string",
       "suiteqlExpr": {
-        "kind": "column",
-        "expr": "entitystatus"
+        "kind": "ref",
+        "column": "entitystatus"
       }
     },
     {
@@ -379,7 +379,8 @@
       "type": "string",
       "suiteqlExpr": {
         "kind": "column",
-        "expr": "accttype"
+        "expr": "accttype",
+        "valueMap": "accountType"
       }
     },
     {

@@ -43,6 +43,40 @@ def qualify(expression, alias):
     return expression
 
 
+def _suiteql_boolean(value):
+    """Convert SuiteQL's 'T'/'F' strings to booleans; bool('F') would be True."""
+    if isinstance(value, str) and value.upper() in ('T', 'F'):
+        return value.upper() == 'T'
+    return value
+
+
+# SuiteQL returns short codes for enum columns; SOAP returns the enum names.
+VALUE_MAPS = {
+    'accountType': {
+        'AcctPay': '_accountsPayable',
+        'AcctRec': '_accountsReceivable',
+        'Bank': '_bank',
+        'COGS': '_costOfGoodsSold',
+        'CredCard': '_creditCard',
+        'DeferExpense': '_deferredExpense',
+        'DeferRevenue': '_deferredRevenue',
+        'Equity': '_equity',
+        'Expense': '_expense',
+        'FixedAsset': '_fixedAsset',
+        'Income': '_income',
+        'LongTermLiab': '_longTermLiability',
+        'NonPosting': '_nonPosting',
+        'OthAsset': '_otherAsset',
+        'OthCurrAsset': '_otherCurrentAsset',
+        'OthCurrLiab': '_otherCurrentLiability',
+        'OthExpense': '_otherExpense',
+        'OthIncome': '_otherIncome',
+        'Stat': '_statistical',
+        'UnbilledRec': '_unbilledReceivable',
+    },
+}
+
+
 def _batches(values, size):
     for start in range(0, len(values), size):
         yield values[start:start + size]
@@ -143,6 +177,8 @@ class SuiteQLDataSource(DataSource):
         select = {}
         joins = []
         columns = {}
+        boolean_columns = set()
+        value_maps = {}
         refs = {}
         custom_field_targets = {}
         line_targets = {}
@@ -160,17 +196,24 @@ class SuiteQLDataSource(DataSource):
                 key = f'c{index}'
                 select[key] = qualify(expression['expr'], alias)
                 columns[display_name] = key
+                if fields_by_display_name[display_name].get('type') == 'boolean':
+                    boolean_columns.add(display_name)
+                if 'valueMap' in expression:
+                    value_maps[display_name] = VALUE_MAPS[expression['valueMap']]
 
             elif kind == 'ref':
                 id_key = f'c{index}'
                 name_key = f'n{index}'
-                join_alias = f'r{index}'
                 select[id_key] = f'{alias}.{expression["column"]}'
-                select[name_key] = f'{join_alias}.{expression["nameColumn"]}'
-                joins.append(
-                    f'LEFT JOIN {expression["table"]} {join_alias} '
-                    f'ON {join_alias}.id = {alias}.{expression["column"]}'
-                )
+                if 'table' in expression:
+                    join_alias = f'r{index}'
+                    select[name_key] = f'{join_alias}.{expression["nameColumn"]}'
+                    joins.append(
+                        f'LEFT JOIN {expression["table"]} {join_alias} '
+                        f'ON {join_alias}.id = {alias}.{expression["column"]}'
+                    )
+                else:
+                    select[name_key] = f'BUILTIN.DF({alias}.{expression["column"]})'
                 refs[display_name] = (id_key, name_key)
 
             elif kind == 'customFields':
@@ -219,6 +262,8 @@ class SuiteQLDataSource(DataSource):
         return {
             'query': query,
             'columns': columns,
+            'booleanColumns': boolean_columns,
+            'valueMaps': value_maps,
             'refs': refs,
             'customFields': custom_field_targets,
             'lines': line_targets,
@@ -234,7 +279,12 @@ class SuiteQLDataSource(DataSource):
             record = {}
 
             for display_name, key in plan['columns'].items():
-                record[display_name] = row.get(key)
+                value = row.get(key)
+                if display_name in plan['booleanColumns']:
+                    value = _suiteql_boolean(value)
+                elif display_name in plan['valueMaps']:
+                    value = plan['valueMaps'][display_name].get(value, value)
+                record[display_name] = value
 
             for display_name, (id_key, name_key) in plan['refs'].items():
                 record[display_name] = self._build_ref(row.get(id_key), row.get(name_key))

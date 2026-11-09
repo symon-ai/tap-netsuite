@@ -43,10 +43,12 @@
     "replication": "lastmodifieddate",
     "where": [],
     "columns": {
-      "Name": "entityid",
-      "Status": "entitystatus"
+      "Name": "entityid"
     },
     "refs": {
+      "Status": {
+        "column": "entitystatus"
+      },
       "Subsidiary": {
         "column": "subsidiary",
         "table": "subsidiary",
