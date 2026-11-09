@@ -7,7 +7,7 @@ from singer import Transformer, metadata, metrics
 from requests.exceptions import RequestException
 from jsonpath_ng import jsonpath, parse
 import json
-from tap_netsuite.netsuite.exceptions import SymonException
+from tap_netsuite.netsuite.exceptions import SymonException, TapNetSuiteException
 
 LOGGER = singer.get_logger()
 
@@ -60,6 +60,8 @@ def sync_stream(ns, catalog_entry, state):
         try:
             sync_records(ns, catalog_entry, state, counter)
             singer.write_state(state)
+        except (SymonException, TapNetSuiteException):
+            raise
         except RequestException as ex:
             raise Exception("Error syncing {}: {} Response: {}".format(
                 stream, ex, ex.response.text))

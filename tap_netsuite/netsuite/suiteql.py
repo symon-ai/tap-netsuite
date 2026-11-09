@@ -101,7 +101,6 @@ class SuiteQLClient:
     def iter_pages(self, query):
         """Yield keyset-paginated pages."""
         after_key = None
-        pages = 0
 
         while True:
             sql = query.render(after_key=after_key)
@@ -113,19 +112,17 @@ class SuiteQLClient:
                 return
 
             yield items
-            pages += 1
 
             if len(items) < self.page_size:
                 return
 
             next_key = items[-1].get(query.key_alias)
             if next_key is None:
-                # Stop if the response has no pagination key.
-                LOGGER.warning(
-                    'SuiteQL response is missing key column %s; stopping pagination after %s pages',
-                    query.key_alias, pages
+                raise SymonException(
+                    f'NetSuite returned a page without the {query.key_alias} pagination column, '
+                    'so the remaining rows could not be read.',
+                    'netSuite.NetSuiteQueryFailed'
                 )
-                return
 
             after_key = next_key
 
