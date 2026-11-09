@@ -88,7 +88,8 @@ class SuiteQLDataSource(DataSource):
                 ('account ID', self.account_id),
                 ('client ID', self.client_id),
                 ('client secret', self.client_secret),
-                ('access token', self.access_token)
+                ('access token', self.access_token),
+                ('refresh token', self.refresh_token)
             ) if not value
         ]
         if missing:
