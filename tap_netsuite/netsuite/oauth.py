@@ -151,8 +151,11 @@ class NetSuiteOAuthAuthorizationCodeTokenManager:
                 'netSuite.NetSuiteOAuthFailed'
             )
 
-        if body.get('refresh_token'):
-            self.refresh_token = body.get('refresh_token')
+        new_refresh_token = body.get('refresh_token')
+        if new_refresh_token and new_refresh_token != self.refresh_token:
+            # The tap cannot persist this; the connection must be re-authorized once the old token expires.
+            LOGGER.warning('NetSuite issued a new refresh token that will not be saved to the connection')
+            self.refresh_token = new_refresh_token
 
         expires_in = body.get('expires_in', DEFAULT_TOKEN_TTL_SECONDS)
         try:

@@ -83,6 +83,24 @@ CONFIG = {
 }
 
 
+SECRET_CONFIG_KEYS = {
+    'ns_consumer_key',
+    'ns_consumer_secret',
+    'ns_token_key',
+    'ns_token_secret',
+    'ns_client_secret',
+    'ns_access_token',
+    'ns_refresh_token'
+}
+
+
+def redacted_config(config):
+    return {
+        key: ('***' if key in SECRET_CONFIG_KEYS and value else value)
+        for key, value in config.items()
+    }
+
+
 def required_config_keys(raw_config):
     """Return required keys for the selected authentication method."""
     auth_method = (raw_config or {}).get('ns_auth_method') or netsuite.AUTH_METHOD_TBA
@@ -326,7 +344,7 @@ def main_impl():
     singer_utils.check_config(args.config, required_config_keys(args.config))
 
     CONFIG.update(args.config)
-    LOGGER.debug(f"NetSuite CONFIG IS {json.dumps(CONFIG)}")
+    LOGGER.debug(f"NetSuite CONFIG IS {json.dumps(redacted_config(CONFIG))}")
 
     error_info = None
     ns = None

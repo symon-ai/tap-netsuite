@@ -34,6 +34,7 @@ SUITEQL_STREAM_METADATA = {
     if not stream.startswith('_')
 }
 TRANSACTION_LINE_COLUMNS = _RAW_STREAM_METADATA.get('_transactionLineColumns', [])
+TRANSACTION_LINE_BOOLEAN_COLUMNS = {'mainline', 'taxline', 'isclosed'}
 
 
 def qualify(expression, alias):
@@ -146,7 +147,8 @@ class SuiteQLDataSource(DataSource):
             page_size=self.page_size
         )
 
-        # Validate credentials before the first stream.
+        # Force a token refresh so bad client or refresh-token settings fail here, not mid-sync.
+        self.token_manager.invalidate()
         self.token_manager.access_token()
 
     def stream_metadata(self, stream):
@@ -320,7 +322,8 @@ class SuiteQLDataSource(DataSource):
                 query = SuiteQLQuery(
                     select=select,
                     from_clause=f'{TRANSACTION_LINE_TABLE} {TRANSACTION_LINE_ALIAS}',
-                    key_column=f'{TRANSACTION_LINE_ALIAS}.id',
+                    key_column=f'{TRANSACTION_LINE_ALIAS}.transaction',
+                    tiebreak_column=f'{TRANSACTION_LINE_ALIAS}.id',
                     where=[
                         f'{TRANSACTION_LINE_ALIAS}.transaction IN ({_in_list(batch)})',
                         f"{TRANSACTION_LINE_ALIAS}.mainline = 'F'",
@@ -330,10 +333,12 @@ class SuiteQLDataSource(DataSource):
 
                 for page in self.client.iter_pages(query):
                     for row in page:
-                        line = {
-                            column: row.get(f'l{index}')
-                            for index, column in enumerate(TRANSACTION_LINE_COLUMNS)
-                        }
+                        line = {}
+                        for index, column in enumerate(TRANSACTION_LINE_COLUMNS):
+                            value = row.get(f'l{index}')
+                            if column in TRANSACTION_LINE_BOOLEAN_COLUMNS:
+                                value = _suiteql_boolean(value)
+                            line[column] = value
                         lines_by_key[str(row.get('parenttxn'))].append(line)
 
         for display_name, wrapper in line_targets.items():
@@ -361,9 +366,10 @@ class SuiteQLDataSource(DataSource):
 
         columns = []
         try:
-            rows = self.client.execute(f'SELECT TOP 1 * FROM {table}')
+            # REST responses omit null fields, so one row can miss columns; merge a page of rows.
+            rows = self.client.execute(f'SELECT * FROM {table}')
             if rows:
-                columns = sorted(key for key in rows[0] if key.startswith(prefix))
+                columns = sorted({key for row in rows for key in row if key.startswith(prefix)})
             else:
                 LOGGER.info('%s has no rows; cannot discover custom columns', table)
         except SymonException as e:

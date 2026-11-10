@@ -6,10 +6,9 @@ from zeep.helpers import serialize_object
 
 from .datasource import DataSource, project_record
 from .netsuite_connection import ExtendedNetSuiteConnection
+from .oauth import resolve_account_id
 
 LOGGER = singer.get_logger()
-
-SANDBOX_ACCOUNT_SUFFIX = '_SB1'
 
 
 class Soap(DataSource):
@@ -24,9 +23,7 @@ class Soap(DataSource):
                  caching=True):
         super().__init__(object_definitions)
 
-        self.account = account
-        if account is not None and is_sandbox is True:
-            self.account = account + SANDBOX_ACCOUNT_SUFFIX
+        self.account = resolve_account_id(account, is_sandbox)
 
         self.consumer_key = consumer_key
         self.consumer_secret = consumer_secret
