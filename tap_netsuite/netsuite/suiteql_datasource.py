@@ -1,4 +1,5 @@
 """REST/SuiteQL data source for OAuth 2.0 connections."""
+import datetime
 import os
 import re
 from collections import defaultdict
@@ -8,7 +9,7 @@ import singer
 from .datasource import DataSource
 from .exceptions import SymonException
 from .oauth import NetSuiteOAuthAuthorizationCodeTokenManager, resolve_account_id
-from .suiteql import MAX_PAGE_SIZE, SuiteQLClient, SuiteQLQuery, incremental_predicate
+from .suiteql import MAX_PAGE_SIZE, SuiteQLClient, SuiteQLQuery, incremental_predicate, sql_literal
 
 LOGGER = singer.get_logger()
 
@@ -16,6 +17,12 @@ BARE_IDENTIFIER = re.compile(r'^[A-Za-z_][A-Za-z0-9_]*$')
 
 # Keep IN lists below Oracle's 1,000-item limit.
 SUBLIST_BATCH_SIZE = 500
+
+# Rows sampled to discover custom columns; REST omits null fields, so one row is not enough.
+CUSTOM_COLUMN_SAMPLE_SIZE = 200
+
+SUITEQL_DATETIME_FORMAT = 'YYYY-MM-DD HH24:MI:SS'
+PYTHON_DATETIME_FORMAT = '%Y-%m-%d %H:%M:%S'
 
 STREAM_METADATA_FILENAME = 'suiteql_streams.json'
 TRANSACTION_LINE_TABLE = 'transactionline'
@@ -84,14 +91,23 @@ def _batches(values, size):
 
 
 def _in_list(values):
-    rendered = []
-    for value in values:
-        try:
-            rendered.append(str(int(value)))
-        except (TypeError, ValueError):
-            escaped = str(value).replace("'", "''")
-            rendered.append(f"'{escaped}'")
-    return ', '.join(rendered)
+    return ', '.join(sql_literal(value) for value in values)
+
+
+def _utc_datetime_expr(expression):
+    """Render a datetime column in a fixed format; the account is configured for UTC."""
+    return f"TO_CHAR({expression}, '{SUITEQL_DATETIME_FORMAT}')"
+
+
+def _utc_isoformat(value):
+    """Convert a TO_CHAR datetime to an ISO 8601 UTC string."""
+    if not value:
+        return None
+    try:
+        parsed = datetime.datetime.strptime(value, PYTHON_DATETIME_FORMAT)
+    except (TypeError, ValueError):
+        return value
+    return parsed.replace(tzinfo=datetime.timezone.utc).isoformat()
 
 
 class SuiteQLDataSource(DataSource):
@@ -147,10 +163,6 @@ class SuiteQLDataSource(DataSource):
             page_size=self.page_size
         )
 
-        # Force a token refresh so bad client or refresh-token settings fail here, not mid-sync.
-        self.token_manager.invalidate()
-        self.token_manager.access_token()
-
     def stream_metadata(self, stream):
         try:
             return SUITEQL_STREAM_METADATA[stream]
@@ -180,6 +192,7 @@ class SuiteQLDataSource(DataSource):
         joins = []
         columns = {}
         boolean_columns = set()
+        datetime_columns = set()
         value_maps = {}
         refs = {}
         custom_field_targets = {}
@@ -196,9 +209,14 @@ class SuiteQLDataSource(DataSource):
 
             if kind == 'column':
                 key = f'c{index}'
-                select[key] = qualify(expression['expr'], alias)
+                column_expr = qualify(expression['expr'], alias)
+                field_type = fields_by_display_name[display_name].get('type')
+                if field_type == 'datetime':
+                    column_expr = _utc_datetime_expr(column_expr)
+                    datetime_columns.add(display_name)
+                select[key] = column_expr
                 columns[display_name] = key
-                if fields_by_display_name[display_name].get('type') == 'boolean':
+                if field_type == 'boolean':
                     boolean_columns.add(display_name)
                 if 'valueMap' in expression:
                     value_maps[display_name] = VALUE_MAPS[expression['valueMap']]
@@ -220,7 +238,9 @@ class SuiteQLDataSource(DataSource):
 
             elif kind == 'customFields':
                 # Select custom fields in the main query.
-                custom_columns = self._custom_columns(metadata['table'], expression['prefix'])
+                custom_columns = self._custom_columns(
+                    metadata['table'], expression['prefix'], alias, metadata.get('where', [])
+                )
                 keys = {}
                 for offset, column in enumerate(custom_columns):
                     key = f'f{index}x{offset}'
@@ -265,6 +285,7 @@ class SuiteQLDataSource(DataSource):
             'query': query,
             'columns': columns,
             'booleanColumns': boolean_columns,
+            'datetimeColumns': datetime_columns,
             'valueMaps': value_maps,
             'refs': refs,
             'customFields': custom_field_targets,
@@ -284,6 +305,8 @@ class SuiteQLDataSource(DataSource):
                 value = row.get(key)
                 if display_name in plan['booleanColumns']:
                     value = _suiteql_boolean(value)
+                elif display_name in plan['datetimeColumns']:
+                    value = _utc_isoformat(value)
                 elif display_name in plan['valueMaps']:
                     value = plan['valueMaps'][display_name].get(value, value)
                 record[display_name] = value
@@ -358,16 +381,18 @@ class SuiteQLDataSource(DataSource):
             'type': None
         }
 
-    def _custom_columns(self, table, prefix):
+    def _custom_columns(self, table, prefix, alias, where):
         """Find account-specific custom columns."""
-        cache_key = (table, prefix)
+        cache_key = (table, prefix, tuple(where))
         if cache_key in self._custom_columns_by_table:
             return self._custom_columns_by_table[cache_key]
 
         columns = []
+        sql = f'SELECT * FROM {table} {alias}'
+        if where:
+            sql += ' WHERE ' + ' AND '.join(f'({predicate})' for predicate in where)
         try:
-            # REST responses omit null fields, so one row can miss columns; merge a page of rows.
-            rows = self.client.execute(f'SELECT * FROM {table}')
+            rows = self.client.execute(sql, limit=CUSTOM_COLUMN_SAMPLE_SIZE)
             if rows:
                 columns = sorted({key for row in rows for key in row if key.startswith(prefix)})
             else:

@@ -3,7 +3,7 @@ from unittest import mock
 
 import requests
 
-from tap_netsuite.netsuite import suiteql
+from tap_netsuite.netsuite import suiteql, suiteql_datasource
 from tap_netsuite.netsuite.exceptions import SymonException
 from tap_netsuite.netsuite.suiteql import SuiteQLClient, SuiteQLQuery, incremental_predicate
 from tap_netsuite.netsuite.suiteql_datasource import (
@@ -143,8 +143,55 @@ class TestTransactionLines(unittest.TestCase):
         source = SuiteQLDataSource({}, account='123')
         source.client = mock.Mock()
         source.client.execute.return_value = [{'custentity_a': 1}, {'custentity_b': 2, 'id': 1}]
-        self.assertEqual(source._custom_columns('customer', 'custentity'),
+        self.assertEqual(source._custom_columns('customer', 'custentity', 'c', []),
                          ['custentity_a', 'custentity_b'])
+
+    def test_custom_columns_use_stream_filter_and_sample_limit(self):
+        source = SuiteQLDataSource({}, account='123')
+        source.client = mock.Mock()
+        source.client.execute.return_value = []
+        source._custom_columns('transaction', 'custbody', 't', ["t.recordtype = 'invoice'"])
+        source.client.execute.assert_called_once_with(
+            "SELECT * FROM transaction t WHERE (t.recordtype = 'invoice')",
+            limit=suiteql_datasource.CUSTOM_COLUMN_SAMPLE_SIZE
+        )
+
+
+class TestDatetimeColumns(unittest.TestCase):
+    def setUp(self):
+        self.source = SuiteQLDataSource(
+            {'Customer': [{'displayName': 'lastModifiedDate', 'type': 'datetime',
+                           'suiteqlExpr': {'kind': 'column', 'expr': 'lastmodifieddate'}}]},
+            account='123'
+        )
+
+    def test_selected_as_fixed_format(self):
+        plan = self.source._build_plan(
+            'Customer', {'alias': 'c', 'table': 'customer', 'keyColumn': 'id'},
+            ['lastModifiedDate'], None
+        )
+        self.assertEqual(plan['query'].select['c0'],
+                         "TO_CHAR(c.lastmodifieddate, 'YYYY-MM-DD HH24:MI:SS')")
+
+    def test_returned_as_utc_iso(self):
+        plan = self.source._build_plan(
+            'Customer', {'alias': 'c', 'table': 'customer', 'keyColumn': 'id'},
+            ['lastModifiedDate'], None
+        )
+        records = self.source._assemble_page([{'c0': '2024-03-05 14:07:09', 'keycol': 1}], plan)
+        self.assertEqual(records[0]['lastModifiedDate'], '2024-03-05T14:07:09+00:00')
+
+
+class TestRetryDelay(unittest.TestCase):
+    def test_honors_retry_after(self):
+        resp = response(429)
+        resp.headers = {'Retry-After': '7'}
+        self.assertEqual(suiteql._retry_delay(resp, 1), 7)
+
+    def test_rate_limit_backs_off_longer_than_5xx(self):
+        resp_429, resp_503 = response(429), response(503)
+        resp_429.headers = resp_503.headers = {}
+        self.assertGreater(suiteql._retry_delay(resp_429, 1), suiteql._retry_delay(resp_503, 1))
 
 
 if __name__ == '__main__':

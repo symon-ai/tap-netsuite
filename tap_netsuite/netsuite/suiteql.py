@@ -22,6 +22,24 @@ RETRY_STATUS_CODES = (429, 500, 502, 503, 504)
 MAX_RETRIES = 3
 MAX_TIMEOUT_RETRIES = 1
 RETRY_BACKOFF_SECONDS = 2
+# Concurrency slots are shared with the account's other integrations, so wait longer on 429.
+RATE_LIMIT_BACKOFF_SECONDS = 15
+MAX_RETRY_AFTER_SECONDS = 120
+
+
+def _retry_delay(response, attempt):
+    """Return how long to wait before retrying, honoring Retry-After when present."""
+    headers = getattr(response, 'headers', None) or {}
+    try:
+        retry_after = int(headers.get('Retry-After'))
+    except (TypeError, ValueError):
+        retry_after = None
+    if retry_after is not None and retry_after >= 0:
+        return min(retry_after, MAX_RETRY_AFTER_SECONDS)
+
+    if response.status_code == 429:
+        return RATE_LIMIT_BACKOFF_SECONDS * attempt
+    return RETRY_BACKOFF_SECONDS ** attempt
 
 
 class SuiteQLQuery:
@@ -67,13 +85,13 @@ class SuiteQLQuery:
 
         if after_key is not None and self.tiebreak_column:
             key, tiebreak = after_key
-            key_literal = _sql_literal(key)
+            key_literal = sql_literal(key)
             predicates.append(
                 f'{self.key_column} > {key_literal} OR '
-                f'({self.key_column} = {key_literal} AND {self.tiebreak_column} > {_sql_literal(tiebreak)})'
+                f'({self.key_column} = {key_literal} AND {self.tiebreak_column} > {sql_literal(tiebreak)})'
             )
         elif after_key is not None:
-            predicates.append(f'{self.key_column} > {_sql_literal(after_key)}')
+            predicates.append(f'{self.key_column} > {sql_literal(after_key)}')
 
         sql = f'SELECT {self.select_list()} FROM {self.from_clause}'
         if predicates:
@@ -85,7 +103,7 @@ class SuiteQLQuery:
         return sql
 
 
-def _sql_literal(value):
+def sql_literal(value):
     """Format a value for a SuiteQL query."""
     try:
         return str(int(value))
@@ -115,9 +133,9 @@ class SuiteQLClient:
     def query_url(self):
         return f'{service_base_url(self.account_id)}{QUERY_PATH}'
 
-    def execute(self, sql):
+    def execute(self, sql, limit=None):
         """Run one query without pagination."""
-        return (self._post(sql).get('items') or [])
+        return (self._post(sql, limit=limit).get('items') or [])
 
     def iter_pages(self, query):
         """Yield keyset-paginated pages."""
@@ -147,7 +165,8 @@ class SuiteQLClient:
 
             after_key = next_key
 
-    def _post(self, sql):
+    def _post(self, sql, limit=None):
+        limit = min(limit or self.page_size, MAX_PAGE_SIZE)
         token_refreshed = False
         retries = 0
         timeouts = 0
@@ -162,7 +181,7 @@ class SuiteQLClient:
             try:
                 response = self.session.post(
                     self.query_url,
-                    params={'limit': self.page_size, 'offset': 0},
+                    params={'limit': limit, 'offset': 0},
                     json={'q': sql},
                     headers=headers,
                     timeout=REQUEST_TIMEOUT_SECONDS
@@ -170,8 +189,10 @@ class SuiteQLClient:
             except requests.exceptions.Timeout as e:
                 if timeouts < MAX_TIMEOUT_RETRIES:
                     timeouts += 1
-                    LOGGER.info('NetSuite query timed out; retrying (attempt %s of %s)',
-                                timeouts, MAX_TIMEOUT_RETRIES)
+                    delay = RETRY_BACKOFF_SECONDS ** timeouts
+                    LOGGER.info('NetSuite query timed out; retrying in %ss (attempt %s of %s)',
+                                delay, timeouts, MAX_TIMEOUT_RETRIES)
+                    time.sleep(delay)
                     continue
                 raise SymonException(
                     'The NetSuite query timed out. Narrowing the import start date usually resolves '
@@ -196,7 +217,7 @@ class SuiteQLClient:
 
             if response.status_code in RETRY_STATUS_CODES and retries < MAX_RETRIES:
                 retries += 1
-                delay = RETRY_BACKOFF_SECONDS ** retries
+                delay = _retry_delay(response, retries)
                 LOGGER.info(
                     'NetSuite returned %s; retrying in %ss (attempt %s of %s)',
                     response.status_code, delay, retries, MAX_RETRIES
