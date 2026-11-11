@@ -3,7 +3,7 @@ from unittest import mock
 
 import requests
 
-from tap_netsuite.netsuite import suiteql, suiteql_datasource
+from tap_netsuite.netsuite import NS_OBJECT_DEFINITIONS, suiteql, suiteql_datasource
 from tap_netsuite.netsuite.exceptions import SymonException
 from tap_netsuite.netsuite.suiteql import SuiteQLClient, SuiteQLQuery, incremental_predicate
 from tap_netsuite.netsuite.suiteql_datasource import (
@@ -155,6 +155,23 @@ class TestTransactionLines(unittest.TestCase):
             "SELECT * FROM transaction t WHERE (t.recordtype = 'invoice')",
             limit=suiteql_datasource.CUSTOM_COLUMN_SAMPLE_SIZE
         )
+
+
+class TestCurrenciesSuiteQL(unittest.TestCase):
+    def test_incl_in_fx_rate_updates_omitted_from_query(self):
+        source = SuiteQLDataSource(NS_OBJECT_DEFINITIONS, account='123')
+        metadata = suiteql_datasource.SUITEQL_STREAM_METADATA['Currencies']
+        display_names = [field['displayName'] for field in NS_OBJECT_DEFINITIONS['Currencies']]
+        plan = source._build_plan('Currencies', metadata, display_names, None)
+        sql = plan['query'].render()
+
+        self.assertNotIn('inclinfxrateupdates', sql.lower())
+        self.assertIn('InclInFxRateUpdates', plan['unsupported'])
+
+        row = {alias: True for alias in plan['query'].select}
+        row['keycol'] = 1
+        records = source._assemble_page([row], plan)
+        self.assertNotIn('InclInFxRateUpdates', records[0])
 
 
 class TestDatetimeColumns(unittest.TestCase):

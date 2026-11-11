@@ -47,23 +47,19 @@ class Soap(DataSource):
         display_names = self.display_names(catalog_entry)
         internal_name_by_display_name = self.internal_name_by_display_name(stream)
 
-        result = self.client.query_entity(stream, {
+        query_result = self.client.query_entity(stream, {
             'searchValue': start_date,
             'type': 'dateTime',
             'operator': 'onOrAfter'
         })
 
-        for page in self._as_pages(result):
-            yield [
-                project_record(serialize_object(record), display_names, internal_name_by_display_name)
-                for record in page
-            ]
+        if not isinstance(query_result, types.GeneratorType):
+            if query_result is not None:
+                query_result = [query_result]
+            else:
+                query_result = []
 
-    @staticmethod
-    def _as_pages(result):
-        """Return the SDK result as pages."""
-        if isinstance(result, types.GeneratorType):
-            return result
-        if result is None:
-            return []
-        return [result]
+        return (
+            [project_record(serialize_object(rec), display_names, internal_name_by_display_name) for rec in page]
+            for page in query_result
+        )

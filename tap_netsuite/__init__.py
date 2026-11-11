@@ -124,6 +124,14 @@ def stream_is_selected(mdata):
     return mdata.get((), {}).get('selected', False)
 
 
+def suiteql_discoverable_field(field):
+    """Whether a field can be queried over OAuth / SuiteQL REST."""
+    expression = field.get('suiteqlExpr')
+    if not expression:
+        return False
+    return expression.get('kind') != 'unsupported'
+
+
 # pylint: disable=undefined-variable
 def create_property_schema(field, mdata):
     field_name = field['name']
@@ -286,6 +294,9 @@ def do_discover(ns):
 
         # Loop over the object's fields
         for f in fields:
+            if ns.ns_auth_method == netsuite.AUTH_METHOD_OAUTH2 and not suiteql_discoverable_field(f):
+                continue
+
             field_name = f['displayName']
 
             property_schema, mdata = create_property_schema(

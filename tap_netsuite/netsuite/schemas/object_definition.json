@@ -565,10 +565,7 @@
       "name": "department",
       "type": "string",
       "suiteqlExpr": {
-        "kind": "ref",
-        "column": "department",
-        "table": "department",
-        "nameColumn": "name"
+        "kind": "unsupported"
       }
     },
     {
@@ -576,10 +573,7 @@
       "name": "class",
       "type": "string",
       "suiteqlExpr": {
-        "kind": "ref",
-        "column": "class",
-        "table": "classification",
-        "nameColumn": "name"
+        "kind": "unsupported"
       }
     },
     {
@@ -709,10 +703,7 @@
       "name": "department",
       "type": "string",
       "suiteqlExpr": {
-        "kind": "ref",
-        "column": "department",
-        "table": "department",
-        "nameColumn": "name"
+        "kind": "unsupported"
       }
     },
     {
@@ -720,10 +711,7 @@
       "name": "class",
       "type": "string",
       "suiteqlExpr": {
-        "kind": "ref",
-        "column": "class",
-        "table": "classification",
-        "nameColumn": "name"
+        "kind": "unsupported"
       }
     },
     {
@@ -863,10 +851,7 @@
       "name": "department",
       "type": "string",
       "suiteqlExpr": {
-        "kind": "ref",
-        "column": "department",
-        "table": "department",
-        "nameColumn": "name"
+        "kind": "unsupported"
       }
     },
     {
@@ -874,10 +859,7 @@
       "name": "class",
       "type": "string",
       "suiteqlExpr": {
-        "kind": "ref",
-        "column": "class",
-        "table": "classification",
-        "nameColumn": "name"
+        "kind": "unsupported"
       }
     },
     {
@@ -907,10 +889,7 @@
       "name": "billingAccount",
       "type": "string",
       "suiteqlExpr": {
-        "kind": "ref",
-        "column": "billingaccount",
-        "table": "billingaccount",
-        "nameColumn": "name"
+        "kind": "unsupported"
       }
     },
     {
@@ -1004,10 +983,7 @@
       "name": "discountItem",
       "type": "string",
       "suiteqlExpr": {
-        "kind": "ref",
-        "column": "discountitem",
-        "table": "item",
-        "nameColumn": "itemid"
+        "kind": "unsupported"
       }
     },
     {
@@ -1179,10 +1155,7 @@
       "name": "class",
       "type": "string",
       "suiteqlExpr": {
-        "kind": "ref",
-        "column": "class",
-        "table": "classification",
-        "nameColumn": "name"
+        "kind": "unsupported"
       }
     },
     {
@@ -1209,10 +1182,7 @@
       "name": "department",
       "type": "string",
       "suiteqlExpr": {
-        "kind": "ref",
-        "column": "department",
-        "table": "department",
-        "nameColumn": "name"
+        "kind": "unsupported"
       }
     },
     {
@@ -1334,10 +1304,7 @@
       "name": "adjLocation",
       "type": "string",
       "suiteqlExpr": {
-        "kind": "ref",
-        "column": "adjlocation",
-        "table": "location",
-        "nameColumn": "name"
+        "kind": "unsupported"
       }
     },
     {
@@ -1345,10 +1312,7 @@
       "name": "class",
       "type": "string",
       "suiteqlExpr": {
-        "kind": "ref",
-        "column": "class",
-        "table": "classification",
-        "nameColumn": "name"
+        "kind": "unsupported"
       }
     },
     {
@@ -1386,10 +1350,7 @@
       "name": "department",
       "type": "string",
       "suiteqlExpr": {
-        "kind": "ref",
-        "column": "department",
-        "table": "department",
-        "nameColumn": "name"
+        "kind": "unsupported"
       }
     },
     {
@@ -1539,9 +1500,7 @@
       "name": "updateExistingPrices",
       "type": "boolean",
       "suiteqlExpr": {
-        "kind": "column",
-        "expr": "updateexistingprices",
-        "derived": true
+        "kind": "unsupported"
       }
     }
   ],
@@ -1867,10 +1826,7 @@
       "name": "currency",
       "type": "string",
       "suiteqlExpr": {
-        "kind": "ref",
-        "column": "currency",
-        "table": "currency",
-        "nameColumn": "name"
+        "kind": "unsupported"
       }
     },
     {
@@ -4157,10 +4113,7 @@
       "name": "class",
       "type": "string",
       "suiteqlExpr": {
-        "kind": "ref",
-        "column": "class",
-        "table": "classification",
-        "nameColumn": "name"
+        "kind": "unsupported"
       }
     },
     {
@@ -4278,10 +4231,7 @@
       "name": "department",
       "type": "string",
       "suiteqlExpr": {
-        "kind": "ref",
-        "column": "department",
-        "table": "department",
-        "nameColumn": "name"
+        "kind": "unsupported"
       }
     },
     {
@@ -5099,10 +5049,7 @@
       "name": "salesRep",
       "type": "string",
       "suiteqlExpr": {
-        "kind": "ref",
-        "column": "salesrep",
-        "table": "entity",
-        "nameColumn": "altname"
+        "kind": "unsupported"
       }
     },
     {
@@ -5675,10 +5622,7 @@
       "name": "class",
       "type": "string",
       "suiteqlExpr": {
-        "kind": "ref",
-        "column": "class",
-        "table": "classification",
-        "nameColumn": "name"
+        "kind": "unsupported"
       }
     },
     {
@@ -5766,10 +5710,7 @@
       "name": "department",
       "type": "string",
       "suiteqlExpr": {
-        "kind": "ref",
-        "column": "department",
-        "table": "department",
-        "nameColumn": "name"
+        "kind": "unsupported"
       }
     },
     {
@@ -6209,10 +6150,7 @@
       "name": "salesRep",
       "type": "string",
       "suiteqlExpr": {
-        "kind": "ref",
-        "column": "salesrep",
-        "table": "entity",
-        "nameColumn": "altname"
+        "kind": "unsupported"
       }
     },
     {
@@ -7912,10 +7850,7 @@
       "name": "class",
       "type": "string",
       "suiteqlExpr": {
-        "kind": "ref",
-        "column": "class",
-        "table": "classification",
-        "nameColumn": "name"
+        "kind": "unsupported"
       }
     },
     {
@@ -7983,10 +7918,7 @@
       "name": "department",
       "type": "string",
       "suiteqlExpr": {
-        "kind": "ref",
-        "column": "department",
-        "table": "department",
-        "nameColumn": "name"
+        "kind": "unsupported"
       }
     },
     {
@@ -8552,9 +8484,7 @@
       "name": "inclInFxRateUpdates",
       "type": "boolean",
       "suiteqlExpr": {
-        "kind": "column",
-        "expr": "inclinfxrateupdates",
-        "derived": true
+        "kind": "unsupported"
       }
     },
     {

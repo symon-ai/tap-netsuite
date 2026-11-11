@@ -162,7 +162,9 @@
     "columns": {},
     "refs": {},
     "sublists": {},
-    "unsupported": [],
+    "unsupported": [
+      "UpdateExistingPrices"
+    ],
     "verified": false
   },
   "Currencies": {
@@ -176,7 +178,9 @@
     },
     "refs": {},
     "sublists": {},
-    "unsupported": [],
+    "unsupported": [
+      "InclInFxRateUpdates"
+    ],
     "verified": false
   },
   "Invoice": {
@@ -243,7 +247,12 @@
         "prefix": "custbody"
       }
     },
-    "unsupported": [],
+    "unsupported": [
+      "BillingAccount",
+      "Class",
+      "Department",
+      "DiscountItem"
+    ],
     "verified": false
   },
   "CustomerPayments": {
@@ -348,7 +357,10 @@
         "prefix": "custbody"
       }
     },
-    "unsupported": [],
+    "unsupported": [
+      "ClassRef",
+      "DepartmentRef"
+    ],
     "verified": false
   },
   "VendorPayment": {
@@ -395,7 +407,10 @@
         "prefix": "custbody"
       }
     },
-    "unsupported": [],
+    "unsupported": [
+      "ClassRef",
+      "DepartmentRef"
+    ],
     "verified": false
   },
   "InventoryTransfer": {
@@ -451,7 +466,10 @@
         "prefix": "custbody"
       }
     },
-    "unsupported": [],
+    "unsupported": [
+      "ClassRef",
+      "DepartmentRef"
+    ],
     "verified": false
   },
   "InventoryAdjustment": {
@@ -514,7 +532,10 @@
       }
     },
     "unsupported": [
-      "CustomFormRef"
+      "AdjLocationRef",
+      "ClassRef",
+      "CustomFormRef",
+      "DepartmentRef"
     ],
     "verified": false
   },
@@ -586,7 +607,11 @@
         "prefix": "custbody"
       }
     },
-    "unsupported": [],
+    "unsupported": [
+      "Class",
+      "Department",
+      "SalesRep"
+    ],
     "verified": false
   },
   "CreditMemos": {
@@ -670,7 +695,11 @@
         "prefix": "custbody"
       }
     },
-    "unsupported": [],
+    "unsupported": [
+      "Class",
+      "Department",
+      "SalesRep"
+    ],
     "verified": false
   },
   "PurchaseOrder": {
@@ -734,7 +763,10 @@
         "prefix": "custbody"
       }
     },
-    "unsupported": [],
+    "unsupported": [
+      "Class",
+      "Department"
+    ],
     "verified": false
   },
   "InventoryItem": {
@@ -826,7 +858,9 @@
         "kind": "unsupported"
       }
     },
-    "unsupported": [],
+    "unsupported": [
+      "Currency"
+    ],
     "verified": false
   },
   "Items": {
