@@ -47,23 +47,71 @@ import requests
 
 LOGGER = singer.get_logger()
 
-REQUIRED_CONFIG_KEYS = [
+BASE_REQUIRED_CONFIG_KEYS = [
     'ns_account',
-    'ns_consumer_key',
-    'ns_consumer_secret',
-    'ns_token_key',
-    'ns_token_secret',
     'select_fields_by_default'
 ]
 
+# Required keys depend on the authentication method.
+REQUIRED_CONFIG_KEYS_BY_AUTH_METHOD = {
+    netsuite.AUTH_METHOD_TBA: BASE_REQUIRED_CONFIG_KEYS + [
+        'ns_consumer_key',
+        'ns_consumer_secret',
+        'ns_token_key',
+        'ns_token_secret'
+    ],
+    netsuite.AUTH_METHOD_OAUTH2: BASE_REQUIRED_CONFIG_KEYS + [
+        'ns_access_token',
+        'ns_refresh_token',
+        'ns_client_id',
+        'ns_client_secret'
+    ]
+}
+
 CONFIG = {
     'ns_account': None,
+    'ns_auth_method': None,
     'ns_consumer_key': None,
     'ns_consumer_secret': None,
     'ns_token_key': None,
     'ns_token_secret': None,
+    'ns_client_id': None,
+    'ns_client_secret': None,
+    'ns_access_token': None,
+    'ns_refresh_token': None,
     'start_date': None
 }
+
+
+SECRET_CONFIG_KEYS = {
+    'ns_consumer_key',
+    'ns_consumer_secret',
+    'ns_token_key',
+    'ns_token_secret',
+    'ns_client_secret',
+    'ns_access_token',
+    'ns_refresh_token'
+}
+
+
+def redacted_config(config):
+    return {
+        key: ('***' if key in SECRET_CONFIG_KEYS and value else value)
+        for key, value in config.items()
+    }
+
+
+def required_config_keys(raw_config):
+    """Return required keys for the selected authentication method."""
+    auth_method = (raw_config or {}).get('ns_auth_method') or netsuite.AUTH_METHOD_TBA
+
+    if auth_method not in REQUIRED_CONFIG_KEYS_BY_AUTH_METHOD:
+        raise SymonException(
+            f'Unknown NetSuite authentication method: {auth_method}.',
+            'netSuite.NetSuiteUnknownAuthMethod'
+        )
+
+    return REQUIRED_CONFIG_KEYS_BY_AUTH_METHOD[auth_method]
 
 REPLICATION_KEY = ["lastModifiedDate", "LastModifiedDate", "LastModDate"]
 
@@ -74,6 +122,14 @@ ERROR_END_MARKER = '[tap_error_end]'
 
 def stream_is_selected(mdata):
     return mdata.get((), {}).get('selected', False)
+
+
+def suiteql_discoverable_field(field):
+    """Whether a field can be queried over OAuth / SuiteQL REST."""
+    expression = field.get('suiteqlExpr')
+    if not expression:
+        return False
+    return expression.get('kind') != 'unsupported'
 
 
 # pylint: disable=undefined-variable
@@ -238,6 +294,9 @@ def do_discover(ns):
 
         # Loop over the object's fields
         for f in fields:
+            if ns.ns_auth_method == netsuite.AUTH_METHOD_OAUTH2 and not suiteql_discoverable_field(f):
+                continue
+
             field_name = f['displayName']
 
             property_schema, mdata = create_property_schema(
@@ -291,10 +350,12 @@ def do_discover(ns):
 
 
 def main_impl():
-    args = singer_utils.parse_args(REQUIRED_CONFIG_KEYS)
+    # Parse first, then validate authentication-specific keys.
+    args = singer_utils.parse_args([])
+    singer_utils.check_config(args.config, required_config_keys(args.config))
 
     CONFIG.update(args.config)
-    LOGGER.debug(f"NetSuite CONFIG IS {json.dumps(CONFIG)}")
+    LOGGER.debug(f"NetSuite CONFIG IS {json.dumps(redacted_config(CONFIG))}")
 
     error_info = None
     ns = None
@@ -306,9 +367,14 @@ def main_impl():
                       ns_token_secret=CONFIG.get('ns_token_secret'),
                       is_sandbox=CONFIG.get('is_sandbox'),
                       default_start_date=CONFIG.get('start_date'),
-                      select_fields_by_default=CONFIG.get('select_fields_by_default'), )
+                      select_fields_by_default=CONFIG.get('select_fields_by_default'),
+                      ns_auth_method=CONFIG.get('ns_auth_method'),
+                      ns_client_id=CONFIG.get('ns_client_id'),
+                      ns_access_token=CONFIG.get('ns_access_token'),
+                      ns_refresh_token=CONFIG.get('ns_refresh_token'),
+                      ns_client_secret=CONFIG.get('ns_client_secret'))
         try:
-            ns.connect_tba()
+            ns.connect()
         except (requests.exceptions.ConnectionError) as e:
             message = str(e)
             if 'Name or service not known' in message or 'nodename nor servname provided, or not known' in message:

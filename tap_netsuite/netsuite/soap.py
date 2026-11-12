@@ -1,25 +1,47 @@
-# pylint: disable=protected-access
+"""SOAP data source for legacy TBA connections."""
 import singer
+
+from .datasource import DataSource
+from .netsuite_connection import ExtendedNetSuiteConnection
+from .oauth import resolve_account_id
+
 LOGGER = singer.get_logger()
 
 
-class Soap:
+class Soap(DataSource):
+    def __init__(self,
+                 object_definitions,
+                 account=None,
+                 consumer_key=None,
+                 consumer_secret=None,
+                 token_key=None,
+                 token_secret=None,
+                 is_sandbox=False,
+                 caching=True):
+        super().__init__(object_definitions)
 
-    def __init__(self, ns):
-        self.ns = ns
-        self.ns_client = self.ns.ns_client
+        self.account = resolve_account_id(account, is_sandbox)
 
-    def query(self, catalog_entry, state):
-        start_date = self.ns.get_start_date(state, catalog_entry)
+        self.consumer_key = consumer_key
+        self.consumer_secret = consumer_secret
+        self.token_key = token_key
+        self.token_secret = token_secret
+        self.caching = caching
+        self.client = None
+
+    def connect(self):
+        self.client = ExtendedNetSuiteConnection(
+            account=self.account,
+            consumer_key=self.consumer_key,
+            consumer_secret=self.consumer_secret,
+            token_key=self.token_key,
+            token_secret=self.token_secret,
+            caching=self.caching
+        )
+
+    def query_stream(self, catalog_entry, start_date):
         stream = catalog_entry['stream']
-        return self._query_recur(stream=stream, start_date_str=start_date)
-
-    # pylint: disable=too-many-arguments
-    def _query_recur(
-            self,
-            stream,
-            start_date_str):
-        return self.ns_client.query_entity(stream,
-                                           {'searchValue': start_date_str,
-                                            'type': 'dateTime',
-                                            'operator': 'onOrAfter'})
+        return self.client.query_entity(stream,
+                                        {'searchValue': start_date,
+                                         'type': 'dateTime',
+                                         'operator': 'onOrAfter'})

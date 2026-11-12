@@ -1,0 +1,404 @@
+"""REST/SuiteQL data source for OAuth 2.0 connections."""
+import datetime
+import os
+import re
+from collections import defaultdict
+
+import singer
+
+from .datasource import DataSource
+from .exceptions import SymonException
+from .oauth import NetSuiteOAuthAuthorizationCodeTokenManager, resolve_account_id
+from .suiteql import MAX_PAGE_SIZE, SuiteQLClient, SuiteQLQuery, incremental_predicate, sql_literal
+
+LOGGER = singer.get_logger()
+
+BARE_IDENTIFIER = re.compile(r'^[A-Za-z_][A-Za-z0-9_]*$')
+
+# Keep IN lists below Oracle's 1,000-item limit.
+SUBLIST_BATCH_SIZE = 500
+
+# Rows sampled to discover custom columns; REST omits null fields, so one row is not enough.
+CUSTOM_COLUMN_SAMPLE_SIZE = 200
+
+SUITEQL_DATETIME_FORMAT = 'YYYY-MM-DD HH24:MI:SS'
+PYTHON_DATETIME_FORMAT = '%Y-%m-%d %H:%M:%S'
+
+STREAM_METADATA_FILENAME = 'suiteql_streams.json'
+TRANSACTION_LINE_TABLE = 'transactionline'
+TRANSACTION_LINE_ALIAS = 'tl'
+
+
+def _load_stream_metadata():
+    schema_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'schemas')
+    return singer.utils.load_json(os.path.join(schema_path, STREAM_METADATA_FILENAME))
+
+
+_RAW_STREAM_METADATA = _load_stream_metadata()
+
+SUITEQL_STREAM_METADATA = {
+    stream: value for stream, value in _RAW_STREAM_METADATA.items()
+    if not stream.startswith('_')
+}
+TRANSACTION_LINE_COLUMNS = _RAW_STREAM_METADATA.get('_transactionLineColumns', [])
+TRANSACTION_LINE_BOOLEAN_COLUMNS = {'mainline', 'taxline', 'isclosed'}
+
+
+def qualify(expression, alias):
+    """Qualify a bare column with a table alias."""
+    if BARE_IDENTIFIER.match(expression):
+        return f'{alias}.{expression}'
+    return expression
+
+
+def _suiteql_boolean(value):
+    """Convert SuiteQL's 'T'/'F' strings to booleans; bool('F') would be True."""
+    if isinstance(value, str) and value.upper() in ('T', 'F'):
+        return value.upper() == 'T'
+    return value
+
+
+# SuiteQL returns short codes for enum columns; SOAP returns the enum names.
+VALUE_MAPS = {
+    'accountType': {
+        'AcctPay': '_accountsPayable',
+        'AcctRec': '_accountsReceivable',
+        'Bank': '_bank',
+        'COGS': '_costOfGoodsSold',
+        'CredCard': '_creditCard',
+        'DeferExpense': '_deferredExpense',
+        'DeferRevenue': '_deferredRevenue',
+        'Equity': '_equity',
+        'Expense': '_expense',
+        'FixedAsset': '_fixedAsset',
+        'Income': '_income',
+        'LongTermLiab': '_longTermLiability',
+        'NonPosting': '_nonPosting',
+        'OthAsset': '_otherAsset',
+        'OthCurrAsset': '_otherCurrentAsset',
+        'OthCurrLiab': '_otherCurrentLiability',
+        'OthExpense': '_otherExpense',
+        'OthIncome': '_otherIncome',
+        'Stat': '_statistical',
+        'UnbilledRec': '_unbilledReceivable',
+    },
+}
+
+
+def _batches(values, size):
+    for start in range(0, len(values), size):
+        yield values[start:start + size]
+
+
+def _in_list(values):
+    return ', '.join(sql_literal(value) for value in values)
+
+
+def _utc_datetime_expr(expression):
+    """Render a datetime column in a fixed format; the account is configured for UTC."""
+    return f"TO_CHAR({expression}, '{SUITEQL_DATETIME_FORMAT}')"
+
+
+def _utc_isoformat(value):
+    """Convert a TO_CHAR datetime to an ISO 8601 UTC string."""
+    if not value:
+        return None
+    try:
+        parsed = datetime.datetime.strptime(value, PYTHON_DATETIME_FORMAT)
+    except (TypeError, ValueError):
+        return value
+    return parsed.replace(tzinfo=datetime.timezone.utc).isoformat()
+
+
+class SuiteQLDataSource(DataSource):
+    def __init__(self,
+                 object_definitions,
+                 account=None,
+                 client_id=None,
+                 access_token=None,
+                 client_secret=None,
+                 refresh_token=None,
+                 is_sandbox=False,
+                 page_size=MAX_PAGE_SIZE):
+        super().__init__(object_definitions)
+
+        self.account_id = resolve_account_id(account, is_sandbox)
+        self.client_id = client_id
+        self.access_token = access_token
+        self.client_secret = client_secret
+        self.refresh_token = refresh_token
+        self.page_size = page_size
+
+        self.token_manager = None
+        self.client = None
+        self._custom_columns_by_table = {}
+
+    def connect(self):
+        missing = [
+            name for name, value in (
+                ('account ID', self.account_id),
+                ('client ID', self.client_id),
+                ('client secret', self.client_secret),
+                ('access token', self.access_token),
+                ('refresh token', self.refresh_token)
+            ) if not value
+        ]
+        if missing:
+            raise SymonException(
+                f'The NetSuite connection is missing the {", ".join(missing)}. '
+                'Please reconnect and try again.',
+                'netSuite.NetSuiteMissingOAuthConfig'
+            )
+
+        self.token_manager = NetSuiteOAuthAuthorizationCodeTokenManager(
+            account_id=self.account_id,
+            client_id=self.client_id,
+            client_secret=self.client_secret,
+            refresh_token=self.refresh_token,
+            access_token=self.access_token
+        )
+        self.client = SuiteQLClient(
+            account_id=self.account_id,
+            token_manager=self.token_manager,
+            page_size=self.page_size
+        )
+
+    def stream_metadata(self, stream):
+        try:
+            return SUITEQL_STREAM_METADATA[stream]
+        except KeyError:
+            raise SymonException(
+                f'The stream {stream} is not available over NetSuite REST web services.',
+                'netSuite.NetSuiteStreamUnsupported'
+            ) from None
+
+    def query_stream(self, catalog_entry, start_date):
+        stream = catalog_entry['stream']
+        metadata = self.stream_metadata(stream)
+        plan = self._build_plan(stream, metadata, self.display_names(catalog_entry), start_date)
+
+        for page in self.client.iter_pages(plan['query']):
+            yield self._assemble_page(page, plan)
+
+    def _build_plan(self, stream, metadata, display_names, start_date):
+        """Build a SuiteQL query from catalog fields."""
+        alias = metadata['alias']
+        fields_by_display_name = {
+            field['displayName']: field
+            for field in self.object_definitions[stream]
+        }
+
+        select = {}
+        joins = []
+        columns = {}
+        boolean_columns = set()
+        datetime_columns = set()
+        value_maps = {}
+        refs = {}
+        custom_field_targets = {}
+        line_targets = {}
+        unsupported = []
+
+        for index, display_name in enumerate(display_names):
+            expression = (fields_by_display_name.get(display_name) or {}).get('suiteqlExpr')
+            if expression is None:
+                unsupported.append(display_name)
+                continue
+
+            kind = expression['kind']
+
+            if kind == 'column':
+                key = f'c{index}'
+                column_expr = qualify(expression['expr'], alias)
+                field_type = fields_by_display_name[display_name].get('type')
+                if field_type == 'datetime':
+                    column_expr = _utc_datetime_expr(column_expr)
+                    datetime_columns.add(display_name)
+                select[key] = column_expr
+                columns[display_name] = key
+                if field_type == 'boolean':
+                    boolean_columns.add(display_name)
+                if 'valueMap' in expression:
+                    value_maps[display_name] = VALUE_MAPS[expression['valueMap']]
+
+            elif kind == 'ref':
+                id_key = f'c{index}'
+                name_key = f'n{index}'
+                select[id_key] = f'{alias}.{expression["column"]}'
+                if 'table' in expression:
+                    join_alias = f'r{index}'
+                    select[name_key] = f'{join_alias}.{expression["nameColumn"]}'
+                    joins.append(
+                        f'LEFT JOIN {expression["table"]} {join_alias} '
+                        f'ON {join_alias}.id = {alias}.{expression["column"]}'
+                    )
+                else:
+                    select[name_key] = f'BUILTIN.DF({alias}.{expression["column"]})'
+                refs[display_name] = (id_key, name_key)
+
+            elif kind == 'customFields':
+                # Select custom fields in the main query.
+                custom_columns = self._custom_columns(
+                    metadata['table'], expression['prefix'], alias, metadata.get('where', [])
+                )
+                keys = {}
+                for offset, column in enumerate(custom_columns):
+                    key = f'f{index}x{offset}'
+                    select[key] = f'{alias}.{column}'
+                    keys[column] = key
+                custom_field_targets[display_name] = keys
+
+            elif kind == 'transactionLines':
+                line_targets[display_name] = expression.get('wrapper', 'line')
+
+            else:
+                unsupported.append(display_name)
+
+        if unsupported:
+            LOGGER.warning(
+                '%s: no SuiteQL mapping for %s; these fields will be null. '
+                'See tap_netsuite/netsuite/schemas/suiteql_streams.json',
+                stream, ', '.join(sorted(unsupported))
+            )
+
+        key_column = qualify(metadata['keyColumn'], alias)
+
+        where = list(metadata.get('where', []))
+        replication_column = metadata.get('replication')
+        if replication_column and start_date:
+            predicate = incremental_predicate(qualify(replication_column, alias), start_date)
+            if predicate:
+                where.append(predicate)
+
+        from_clause = f'{metadata["table"]} {alias}'
+        if joins:
+            from_clause += ' ' + ' '.join(joins)
+
+        query = SuiteQLQuery(
+            select=select,
+            from_clause=from_clause,
+            key_column=key_column,
+            where=where
+        )
+
+        return {
+            'query': query,
+            'columns': columns,
+            'booleanColumns': boolean_columns,
+            'datetimeColumns': datetime_columns,
+            'valueMaps': value_maps,
+            'refs': refs,
+            'customFields': custom_field_targets,
+            'lines': line_targets,
+            'unsupported': unsupported
+        }
+
+    def _assemble_page(self, rows, plan):
+        """Build SOAP-compatible records from SuiteQL rows."""
+        key_alias = plan['query'].key_alias
+        records = []
+
+        for row in rows:
+            record = {}
+
+            for display_name, key in plan['columns'].items():
+                value = row.get(key)
+                if display_name in plan['booleanColumns']:
+                    value = _suiteql_boolean(value)
+                elif display_name in plan['datetimeColumns']:
+                    value = _utc_isoformat(value)
+                elif display_name in plan['valueMaps']:
+                    value = plan['valueMaps'][display_name].get(value, value)
+                record[display_name] = value
+
+            for display_name, (id_key, name_key) in plan['refs'].items():
+                record[display_name] = self._build_ref(row.get(id_key), row.get(name_key))
+
+            for display_name, keys in plan['customFields'].items():
+                custom_fields = [
+                    {'scriptId': column, 'value': row.get(key)}
+                    for column, key in keys.items()
+                    if row.get(key) is not None
+                ]
+                record[display_name] = {'customField': custom_fields} if custom_fields else None
+
+            for display_name in plan['unsupported']:
+                record[display_name] = None
+
+            records.append((row.get(key_alias), record))
+
+        if plan['lines']:
+            self._attach_transaction_lines(records, plan['lines'])
+
+        return [record for _, record in records]
+
+    def _attach_transaction_lines(self, records, line_targets):
+        keys = [key for key, _ in records if key is not None]
+        lines_by_key = defaultdict(list)
+
+        if keys and TRANSACTION_LINE_COLUMNS:
+            select = {'parenttxn': f'{TRANSACTION_LINE_ALIAS}.transaction'}
+            for index, column in enumerate(TRANSACTION_LINE_COLUMNS):
+                select[f'l{index}'] = f'{TRANSACTION_LINE_ALIAS}.{column}'
+
+            for batch in _batches(keys, SUBLIST_BATCH_SIZE):
+                query = SuiteQLQuery(
+                    select=select,
+                    from_clause=f'{TRANSACTION_LINE_TABLE} {TRANSACTION_LINE_ALIAS}',
+                    key_column=f'{TRANSACTION_LINE_ALIAS}.transaction',
+                    tiebreak_column=f'{TRANSACTION_LINE_ALIAS}.id',
+                    where=[
+                        f'{TRANSACTION_LINE_ALIAS}.transaction IN ({_in_list(batch)})',
+                        f"{TRANSACTION_LINE_ALIAS}.mainline = 'F'",
+                        f"{TRANSACTION_LINE_ALIAS}.taxline = 'F'"
+                    ]
+                )
+
+                for page in self.client.iter_pages(query):
+                    for row in page:
+                        line = {}
+                        for index, column in enumerate(TRANSACTION_LINE_COLUMNS):
+                            value = row.get(f'l{index}')
+                            if column in TRANSACTION_LINE_BOOLEAN_COLUMNS:
+                                value = _suiteql_boolean(value)
+                            line[column] = value
+                        lines_by_key[str(row.get('parenttxn'))].append(line)
+
+        for display_name, wrapper in line_targets.items():
+            for key, record in records:
+                lines = lines_by_key.get(str(key), [])
+                record[display_name] = {wrapper: lines} if lines else None
+
+    @staticmethod
+    def _build_ref(internal_id, name):
+        """Build a SOAP-style record reference."""
+        if internal_id is None and name is None:
+            return None
+        return {
+            'name': name,
+            'internalId': None if internal_id is None else str(internal_id),
+            'externalId': None,
+            'type': None
+        }
+
+    def _custom_columns(self, table, prefix, alias, where):
+        """Find account-specific custom columns."""
+        cache_key = (table, prefix, tuple(where))
+        if cache_key in self._custom_columns_by_table:
+            return self._custom_columns_by_table[cache_key]
+
+        columns = []
+        sql = f'SELECT * FROM {table} {alias}'
+        if where:
+            sql += ' WHERE ' + ' AND '.join(f'({predicate})' for predicate in where)
+        try:
+            rows = self.client.execute(sql, limit=CUSTOM_COLUMN_SAMPLE_SIZE)
+            if rows:
+                columns = sorted({key for row in rows for key in row if key.startswith(prefix)})
+            else:
+                LOGGER.info('%s has no rows; cannot discover custom columns', table)
+        except SymonException as e:
+            LOGGER.warning('Could not discover custom columns on %s: %s', table, e)
+
+        self._custom_columns_by_table[cache_key] = columns
+        return columns
