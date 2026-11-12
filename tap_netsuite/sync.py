@@ -1,22 +1,49 @@
 import time
+import dateutil.parser as parser
+import datetime
 import singer
 import singer.utils as singer_utils
 from singer import Transformer, metadata, metrics
 from requests.exceptions import RequestException
+from jsonpath_ng import jsonpath, parse
 import json
+from zeep.helpers import serialize_object
+from tap_netsuite.netsuite import AUTH_METHOD_OAUTH2
 from tap_netsuite.netsuite.exceptions import SymonException, TapNetSuiteException
+import types
 
 LOGGER = singer.get_logger()
 
 
-def transform_data_hook():
-    """Coerce values to the catalog schema."""
-    def pre_hook(data, typ, schema):
-        result = data
+def get_internal_name_by_name(ns, stream):
+    to_return = {}
+    object_definition = ns.describe(stream)
+    for element in object_definition:
+        to_return[element.get('displayName')] = element.get('name')
 
-        # Serialize nested references and sublists stored as strings.
-        if isinstance(data, dict) and not typ == 'object':
-            result = json.dumps(data, default=str)
+    return to_return
+
+
+def transform_data_hook(ns, stream):
+    # SuiteQL records are already keyed by display name; SOAP records use internal names.
+    is_oauth = ns.ns_auth_method == AUTH_METHOD_OAUTH2
+
+    def pre_hook(data, typ, schema):
+        if not is_oauth:
+            internal_name_by_property = get_internal_name_by_name(ns, stream)
+        result = data
+        if isinstance(data, dict):
+            result = {}
+            schema_properties = schema.get('properties', {})
+            for _property in schema_properties:
+                prop = _property if is_oauth else internal_name_by_property[_property]
+                data_property = data.get(prop, None)
+                if isinstance(data_property, datetime.datetime) is True:
+                    data_property = data_property.isoformat()
+                result[_property] = data_property
+
+            if not typ == 'object':
+                result = json.dumps(data, default=str)
 
         # NetSuite can return the value '0.0' for integer typed fields. This
         # causes a schema violation. Convert it to '0' if schema['type'] has
@@ -57,12 +84,13 @@ def sync_stream(ns, catalog_entry, state):
         try:
             sync_records(ns, catalog_entry, state, counter)
             singer.write_state(state)
-        except (SymonException, TapNetSuiteException):
-            raise
         except RequestException as ex:
             raise Exception("Error syncing {}: {} Response: {}".format(
                 stream, ex, ex.response.text))
         except Exception as ex:
+            # Keep OAuth error codes intact instead of wrapping them in a generic exception.
+            if ns.ns_auth_method == AUTH_METHOD_OAUTH2 and isinstance(ex, (SymonException, TapNetSuiteException)):
+                raise
             if 'Invalid login attempt' in str(ex):
                 raise SymonException('The consumer key, consumer secret, token ID, or token secret provided is incorrect. Please check and try again.', 'netSuite.NetSuiteInvalidKey')
             raise Exception("Error syncing {}: {}".format(
@@ -88,10 +116,21 @@ def sync_records(ns, catalog_entry, state, counter):
 
     previous_max_replication_key = None
 
-    for page in ns.query(catalog_entry, state):
+    is_oauth = ns.ns_auth_method == AUTH_METHOD_OAUTH2
+    query_result = ns.query(catalog_entry, state)
+
+    if not isinstance(query_result, types.GeneratorType):
+        if query_result is not None:
+            query_result = [query_result]
+        else:
+            query_result = []
+
+    for page in query_result:
         for rec in page:
             counter.increment()
-            with Transformer(pre_hook=transform_data_hook()) as transformer:
+            with Transformer(pre_hook=transform_data_hook(ns, stream)) as transformer:
+                if not is_oauth:
+                    rec = serialize_object(rec)
                 rec = transformer.transform(rec, schema)
 
             singer.write_message(

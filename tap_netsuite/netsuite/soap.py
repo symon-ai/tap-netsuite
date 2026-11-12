@@ -1,10 +1,7 @@
 """SOAP data source for legacy TBA connections."""
-import types
-
 import singer
-from zeep.helpers import serialize_object
 
-from .datasource import DataSource, project_record
+from .datasource import DataSource
 from .netsuite_connection import ExtendedNetSuiteConnection
 from .oauth import resolve_account_id
 
@@ -44,22 +41,7 @@ class Soap(DataSource):
 
     def query_stream(self, catalog_entry, start_date):
         stream = catalog_entry['stream']
-        display_names = self.display_names(catalog_entry)
-        internal_name_by_display_name = self.internal_name_by_display_name(stream)
-
-        query_result = self.client.query_entity(stream, {
-            'searchValue': start_date,
-            'type': 'dateTime',
-            'operator': 'onOrAfter'
-        })
-
-        if not isinstance(query_result, types.GeneratorType):
-            if query_result is not None:
-                query_result = [query_result]
-            else:
-                query_result = []
-
-        return (
-            [project_record(serialize_object(rec), display_names, internal_name_by_display_name) for rec in page]
-            for page in query_result
-        )
+        return self.client.query_entity(stream,
+                                        {'searchValue': start_date,
+                                         'type': 'dateTime',
+                                         'operator': 'onOrAfter'})
