@@ -22,6 +22,8 @@ REQUEST_TIMEOUT_SECONDS = 330
 RETRY_STATUS_CODES = (429, 500, 502, 503, 504)
 MAX_RETRIES = 3
 MAX_TIMEOUT_RETRIES = 1
+# First attempt, one token refresh, and every timeout and status retry.
+MAX_ATTEMPTS = 1 + 1 + MAX_TIMEOUT_RETRIES + MAX_RETRIES
 RETRY_BACKOFF_SECONDS = 2
 # Concurrency slots are shared with the account's other integrations, so wait longer on 429.
 RATE_LIMIT_BACKOFF_SECONDS = 15
@@ -187,19 +189,10 @@ class SuiteQLClient:
 
     def iter_pages(self, query):
         """Yield keyset-paginated pages."""
-        after_key = None
-
-        # Each loop sends one request for up to page_size rows, yields them, then
-        # re-renders the query starting after the last row's key.
-        while True:
-            sql = query.render(after_key=after_key)
-            LOGGER.debug('SuiteQL: %s', sql)
-
-            body = self._post(sql)
-            items = body.get('items') or []
-            if not items:
-                return
-
+        # Each loop yields one page of up to page_size rows, then requests the page
+        # starting after the last row's key. Stops when NetSuite returns no rows.
+        items = self._fetch_page(query, after_key=None)
+        while items:
             yield items
 
             # A short page means NetSuite has nothing left; skip the extra empty request.
@@ -215,7 +208,12 @@ class SuiteQLClient:
                     'netSuite.NetSuiteQueryFailed'
                 )
 
-            after_key = next_key
+            items = self._fetch_page(query, after_key=next_key)
+
+    def _fetch_page(self, query, after_key):
+        sql = query.render(after_key=after_key)
+        LOGGER.debug('SuiteQL: %s', sql)
+        return self._post(sql).get('items') or []
 
     def _post(self, sql, limit=None, retry_server_errors=True):
         limit = min(limit or self.page_size, MAX_PAGE_SIZE)
@@ -224,8 +222,9 @@ class SuiteQLClient:
         timeouts = 0
 
         # Retry loop. Each failure type has its own budget: one token refresh on 401,
-        # MAX_TIMEOUT_RETRIES on timeouts, and MAX_RETRIES on 429/5xx. Anything else raises.
-        while True:
+        # MAX_TIMEOUT_RETRIES on timeouts, and MAX_RETRIES on 429/5xx. Anything else raises,
+        # so every path returns or raises within MAX_ATTEMPTS.
+        for _ in range(MAX_ATTEMPTS):
             # Built on every attempt so a refreshed token is picked up after a 401.
             headers = {
                 'Authorization': f'Bearer {self.token_manager.access_token()}',
@@ -282,6 +281,11 @@ class SuiteQLClient:
 
             # Not retryable (or out of retries): convert to a user-facing error.
             raise self._query_error(response, sql)
+
+        raise SymonException(
+            'NetSuite did not return a response after repeated retries.',
+            'netSuite.NetSuiteQueryFailed'
+        )
 
     @staticmethod
     def _query_error(response, sql):

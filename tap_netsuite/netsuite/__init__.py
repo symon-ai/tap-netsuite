@@ -155,7 +155,6 @@ class NetSuite:
             )
         elif self.ns_auth_method == AUTH_METHOD_TBA:
             self.data_source = Soap(
-                NS_OBJECT_DEFINITIONS,
                 account=self.ns_account,
                 consumer_key=self.ns_consumer_key,
                 consumer_secret=self.ns_consumer_secret,

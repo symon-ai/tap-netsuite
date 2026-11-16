@@ -7,7 +7,6 @@ from collections import defaultdict
 import requests
 import singer
 
-from .datasource import DataSource
 from .exceptions import SymonException, TapNetSuiteException
 from .oauth import NetSuiteOAuthAuthorizationCodeTokenManager, resolve_account_id
 from .suiteql import MAX_PAGE_SIZE, SuiteQLClient, SuiteQLQuery, incremental_predicate, sql_literal
@@ -127,7 +126,7 @@ def _utc_isoformat(value):
     return parsed.replace(tzinfo=datetime.timezone.utc).isoformat()
 
 
-class SuiteQLDataSource(DataSource):
+class SuiteQLDataSource:
     def __init__(self,
                  object_definitions,
                  account=None,
@@ -137,8 +136,7 @@ class SuiteQLDataSource(DataSource):
                  refresh_token=None,
                  is_sandbox=False,
                  page_size=MAX_PAGE_SIZE):
-        super().__init__(object_definitions)
-
+        self.object_definitions = object_definitions
         self.account_id = resolve_account_id(account, is_sandbox)
         self.client_id = client_id
         self.access_token = access_token
@@ -179,6 +177,10 @@ class SuiteQLDataSource(DataSource):
             token_manager=self.token_manager,
             page_size=self.page_size
         )
+
+    @staticmethod
+    def display_names(catalog_entry):
+        return list(catalog_entry['schema'].get('properties', {}))
 
     def stream_metadata(self, stream):
         try:

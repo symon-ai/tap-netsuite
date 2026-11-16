@@ -1,16 +1,14 @@
 """SOAP data source for legacy TBA connections."""
 import singer
 
-from .datasource import DataSource
 from .netsuite_connection import ExtendedNetSuiteConnection
 from .oauth import resolve_account_id
 
 LOGGER = singer.get_logger()
 
 
-class Soap(DataSource):
+class Soap:
     def __init__(self,
-                 object_definitions,
                  account=None,
                  consumer_key=None,
                  consumer_secret=None,
@@ -18,8 +16,6 @@ class Soap(DataSource):
                  token_secret=None,
                  is_sandbox=False,
                  caching=True):
-        super().__init__(object_definitions)
-
         self.account = resolve_account_id(account, is_sandbox)
 
         self.consumer_key = consumer_key
