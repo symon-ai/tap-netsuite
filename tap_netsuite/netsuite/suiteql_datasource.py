@@ -454,7 +454,7 @@ class SuiteQLDataSource:
             SELECT tl.transaction AS parenttxn, tl.item AS l0, BUILTIN.DF(tl.item) AS ln0,
                    tl.linesequencenumber AS l1, ..., tl.transaction AS keycol, tl.id AS tiebreakcol
             FROM transactionline tl
-            WHERE (tl.transaction IN (101, 102, 103)) AND (tl.mainline = 'F') AND (tl.taxline = 'F')
+            WHERE (tl.transaction IN (101, 102, 103))
             ORDER BY tl.transaction ASC, tl.id ASC
 
         Line IDs repeat across transactions, so pagination uses (transaction, id).
@@ -476,10 +476,7 @@ class SuiteQLDataSource:
                     key_column=f'{TRANSACTION_LINE_ALIAS}.transaction',
                     tiebreak_column=f'{TRANSACTION_LINE_ALIAS}.id',
                     where=[
-                        f'{TRANSACTION_LINE_ALIAS}.transaction IN ({_in_list(batch)})',
-                        # Skip the header (mainline) and tax lines; SOAP's line sublist excludes them.
-                        f"{TRANSACTION_LINE_ALIAS}.mainline = 'F'",
-                        f"{TRANSACTION_LINE_ALIAS}.taxline = 'F'"
+                        f'{TRANSACTION_LINE_ALIAS}.transaction IN ({_in_list(batch)})'
                     ]
                 )
 
