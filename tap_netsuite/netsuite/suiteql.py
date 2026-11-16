@@ -11,6 +11,7 @@ from .oauth import service_base_url
 LOGGER = singer.get_logger()
 
 QUERY_PATH = '/services/rest/query/v1/suiteql'
+METADATA_CATALOG_PATH = '/services/rest/record/v1/metadata-catalog'
 
 # NetSuite allows up to 1,000 rows per response.
 MAX_PAGE_SIZE = 1000
@@ -43,7 +44,26 @@ def _retry_delay(response, attempt):
 
 
 class SuiteQLQuery:
-    """Build SuiteQL statements for one stream."""
+    """Build SuiteQL statements for one stream.
+
+    `select` maps a short output alias to a SQL expression. Short aliases keep the
+    SQL small and let us read each value back from the response row by alias.
+
+    Example for Customer, selecting Name, Subsidiary and Last Modified Date with a
+    start date, on the second page (after_key=1000):
+
+        SELECT c.entityid AS c0,
+               c.subsidiary AS c1, r1.name AS n1,
+               TO_CHAR(c.lastmodifieddate, 'YYYY-MM-DD HH24:MI:SS') AS c2,
+               c.id AS keycol
+        FROM customer c
+        LEFT JOIN subsidiary r1 ON r1.id = c.subsidiary
+        WHERE (c.lastmodifieddate >= TO_DATE('2026-01-01 00:00:00', 'YYYY-MM-DD HH24:MI:SS'))
+          AND (c.id > 1000)
+        ORDER BY c.id ASC
+
+    render() returns this on a single line; it is wrapped here for readability.
+    """
 
     KEY_ALIAS = 'keycol'
     TIEBREAK_ALIAS = 'tiebreakcol'
@@ -59,7 +79,8 @@ class SuiteQLQuery:
         self.tiebreak_column = tiebreak_column
         self.where = list(where or [])
 
-        # Include the key needed for pagination.
+        # Always select the pagination key (and tiebreak) so the last row of each page
+        # tells us where the next page starts, e.g. `c.id AS keycol`.
         self.select.setdefault(self.key_alias, key_column)
         if tiebreak_column:
             self.select.setdefault(self.TIEBREAK_ALIAS, tiebreak_column)
@@ -75,6 +96,7 @@ class SuiteQLQuery:
         return (key, tiebreak)
 
     def select_list(self):
+        # {'c0': 'c.entityid', 'id': 'id'} -> "c.entityid AS c0, id"
         return ', '.join(
             expression if expression == alias else f'{expression} AS {alias}'
             for alias, expression in self.select.items()
@@ -83,7 +105,12 @@ class SuiteQLQuery:
     def render(self, after_key=None):
         predicates = list(self.where)
 
+        # Keyset pagination: instead of OFFSET, each page asks for rows whose key is
+        # greater than the last key already read. after_key is None on the first page.
         if after_key is not None and self.tiebreak_column:
+            # With a tiebreak, the key alone repeats across rows, so continue from the
+            # (key, tiebreak) pair: rows with a later key, or the same key and a later tiebreak.
+            #   (tl.transaction > 102 OR (tl.transaction = 102 AND tl.id > 7))
             key, tiebreak = after_key
             key_literal = sql_literal(key)
             predicates.append(
@@ -95,7 +122,9 @@ class SuiteQLQuery:
 
         sql = f'SELECT {self.select_list()} FROM {self.from_clause}'
         if predicates:
+            # Parenthesize each predicate so an OR inside one can't leak into the others.
             sql += ' WHERE ' + ' AND '.join(f'({predicate})' for predicate in predicates)
+        # The ORDER BY must match the pagination predicate, or pages would skip or repeat rows.
         sql += f' ORDER BY {self.key_column} ASC'
         if self.tiebreak_column:
             sql += f', {self.tiebreak_column} ASC'
@@ -105,6 +134,7 @@ class SuiteQLQuery:
 
 def sql_literal(value):
     """Format a value for a SuiteQL query."""
+    # Numbers go in bare (1000); anything else is quoted with ' doubled ('O''Brien').
     try:
         return str(int(value))
     except (TypeError, ValueError):
@@ -133,14 +163,34 @@ class SuiteQLClient:
     def query_url(self):
         return f'{service_base_url(self.account_id)}{QUERY_PATH}'
 
-    def execute(self, sql, limit=None):
+    def execute(self, sql, limit=None, retry_server_errors=True):
         """Run one query without pagination."""
-        return (self._post(sql, limit=limit).get('items') or [])
+        return (self._post(sql, limit=limit, retry_server_errors=retry_server_errors).get('items') or [])
+
+    def record_field_names(self, record_type):
+        """Return every field NetSuite defines for a REST record type, including custom fields."""
+        response = self.session.get(
+            f'{service_base_url(self.account_id)}{METADATA_CATALOG_PATH}/{record_type}',
+            headers={
+                'Authorization': f'Bearer {self.token_manager.access_token()}',
+                # JSON Schema lists each field under "properties", whether or not any row has a value.
+                'Accept': 'application/schema+json'
+            },
+            timeout=REQUEST_TIMEOUT_SECONDS
+        )
+        if response.status_code != 200:
+            raise SymonException(
+                f'NetSuite returned {response.status_code} for the {record_type} record metadata.',
+                'netSuite.NetSuiteQueryFailed'
+            )
+        return list((response.json().get('properties') or {}).keys())
 
     def iter_pages(self, query):
         """Yield keyset-paginated pages."""
         after_key = None
 
+        # Each loop sends one request for up to page_size rows, yields them, then
+        # re-renders the query starting after the last row's key.
         while True:
             sql = query.render(after_key=after_key)
             LOGGER.debug('SuiteQL: %s', sql)
@@ -152,9 +202,11 @@ class SuiteQLClient:
 
             yield items
 
+            # A short page means NetSuite has nothing left; skip the extra empty request.
             if len(items) < self.page_size:
                 return
 
+            # Rows are sorted by key, so the last row holds the largest key read so far.
             next_key = query.next_key(items[-1])
             if next_key is None:
                 raise SymonException(
@@ -165,22 +217,28 @@ class SuiteQLClient:
 
             after_key = next_key
 
-    def _post(self, sql, limit=None):
+    def _post(self, sql, limit=None, retry_server_errors=True):
         limit = min(limit or self.page_size, MAX_PAGE_SIZE)
         token_refreshed = False
         retries = 0
         timeouts = 0
 
+        # Retry loop. Each failure type has its own budget: one token refresh on 401,
+        # MAX_TIMEOUT_RETRIES on timeouts, and MAX_RETRIES on 429/5xx. Anything else raises.
         while True:
+            # Built on every attempt so a refreshed token is picked up after a 401.
             headers = {
                 'Authorization': f'Bearer {self.token_manager.access_token()}',
                 'Content-Type': 'application/json',
+                # Required by the SuiteQL REST endpoint.
                 'Prefer': 'transient'
             }
 
             try:
                 response = self.session.post(
                     self.query_url,
+                    # offset stays 0: paging is done in the WHERE clause (see SuiteQLQuery.render),
+                    # because NetSuite's offset paging gets slower and is capped on large tables.
                     params={'limit': limit, 'offset': 0},
                     json={'q': sql},
                     headers=headers,
@@ -190,8 +248,7 @@ class SuiteQLClient:
                 if timeouts < MAX_TIMEOUT_RETRIES:
                     timeouts += 1
                     delay = RETRY_BACKOFF_SECONDS ** timeouts
-                    LOGGER.info('NetSuite query timed out; retrying in %ss (attempt %s of %s)',
-                                delay, timeouts, MAX_TIMEOUT_RETRIES)
+                    LOGGER.info('NetSuite query timed out; retrying in %ss', delay)
                     time.sleep(delay)
                     continue
                 raise SymonException(
@@ -207,7 +264,6 @@ class SuiteQLClient:
                 # Refresh once if NetSuite rejects the token.
                 if not token_refreshed:
                     token_refreshed = True
-                    LOGGER.info('NetSuite rejected the access token; re-minting and retrying')
                     self.token_manager.invalidate()
                     continue
                 raise SymonException(
@@ -215,16 +271,16 @@ class SuiteQLClient:
                     'netSuite.NetSuiteOAuthFailed'
                 )
 
-            if response.status_code in RETRY_STATUS_CODES and retries < MAX_RETRIES:
+            retryable = response.status_code in RETRY_STATUS_CODES and (
+                retry_server_errors or response.status_code == 429)
+            if retryable and retries < MAX_RETRIES:
                 retries += 1
                 delay = _retry_delay(response, retries)
-                LOGGER.info(
-                    'NetSuite returned %s; retrying in %ss (attempt %s of %s)',
-                    response.status_code, delay, retries, MAX_RETRIES
-                )
+                LOGGER.info('NetSuite returned %s; retrying in %ss', response.status_code, delay)
                 time.sleep(delay)
                 continue
 
+            # Not retryable (or out of retries): convert to a user-facing error.
             raise self._query_error(response, sql)
 
     @staticmethod
@@ -254,8 +310,9 @@ class SuiteQLClient:
             return SymonException(message, 'netSuite.NetSuiteInsufficientPermissions')
 
         if response.status_code == 400:
+            # The tap builds the SQL, so the user can't act on NetSuite's detail; it's logged above.
             return SymonException(
-                f'NetSuite rejected the query: {detail_text}',
+                'NetSuite could not run the import query for this record type. Please contact support.',
                 'netSuite.NetSuiteInvalidQuery'
             )
 

@@ -1,157 +1,301 @@
 {
   "_comment": [
     "SuiteQL metadata for each stream.",
-    "Field mappings are in object_definition.json under 'suiteqlExpr'.",
-    "Edit this file, then regenerate the mappings.",
+    "Field names and types come from object_definition.json, shared with SOAP.",
     "",
-    "table/from: source table and joins.",
+    "table: source table.",
     "alias: primary table alias.",
+    "recordType: REST record type whose metadata lists custom fields.",
+    "recordTypes: list form of recordType, for tables spanning several record types (Items).",
     "keyColumn: key used for pagination.",
     "replication: incremental replication column.",
     "where: static filters.",
-    "columns: field-to-column overrides.",
-    "refs: joined reference fields.",
-    "sublists: nested data mappings.",
-    "unsupported: fields returned as null.",
-    "verified: mapping validation status."
+    "lineSign: -1 where SuiteQL stores line amounts negated (sales transactions).",
+    "fields: how to read each catalog field in SuiteQL, keyed by displayName (kind: column, ref, mainlineRef, joinColumn, customFields, transactionLines, unsupported; optional: null instead of failing when the account can't read it).",
+    "_transactionLineFields: [SOAP line field, transactionline column, kind] for item lists."
   ],
-  "_transactionLineColumns": [
-    "id",
-    "linesequencenumber",
-    "item",
-    "quantity",
-    "rate",
-    "netamount",
-    "grossamount",
-    "foreignamount",
-    "memo",
-    "department",
-    "class",
-    "location",
-    "entity",
-    "expenseaccount",
-    "units",
-    "mainline",
-    "taxline",
-    "isclosed",
-    "createdfrom"
+  "_transactionLineFields": [
+    [
+      "item",
+      "item",
+      "ref"
+    ],
+    [
+      "line",
+      "linesequencenumber",
+      "column"
+    ],
+    [
+      "quantity",
+      "quantity",
+      "signed"
+    ],
+    [
+      "rate",
+      "rate",
+      "column"
+    ],
+    [
+      "amount",
+      "foreignamount",
+      "signed"
+    ],
+    [
+      "grossAmt",
+      "grossamount",
+      "signed"
+    ],
+    [
+      "description",
+      "memo",
+      "column"
+    ],
+    [
+      "department",
+      "department",
+      "ref"
+    ],
+    [
+      "class",
+      "class",
+      "ref"
+    ],
+    [
+      "location",
+      "location",
+      "ref"
+    ],
+    [
+      "units",
+      "units",
+      "ref"
+    ],
+    [
+      "customer",
+      "entity",
+      "ref"
+    ],
+    [
+      "account",
+      "expenseaccount",
+      "ref"
+    ],
+    [
+      "isClosed",
+      "isclosed",
+      "boolean"
+    ],
+    [
+      "createdFrom",
+      "createdfrom",
+      "ref"
+    ]
   ],
+  "_transactionLineFieldsNote": "best-effort mapping from NetSuite docs; not verified against SOAP output",
   "Customer": {
     "table": "customer",
+    "recordType": "customer",
     "alias": "c",
     "keyColumn": "id",
     "replication": "lastmodifieddate",
     "where": [],
-    "columns": {
-      "Name": "entityid"
-    },
-    "refs": {
+    "fields": {
+      "Taxable": {
+        "kind": "column",
+        "expr": "taxable",
+        "derived": true
+      },
+      "Id": {
+        "kind": "column",
+        "expr": "id"
+      },
+      "lastModifiedDate": {
+        "kind": "column",
+        "expr": "lastmodifieddate",
+        "derived": true
+      },
+      "Name": {
+        "kind": "column",
+        "expr": "entityid"
+      },
       "Status": {
+        "kind": "ref",
         "column": "entitystatus"
       },
+      "Email": {
+        "kind": "column",
+        "expr": "email",
+        "derived": true
+      },
+      "DateCreated": {
+        "kind": "column",
+        "expr": "datecreated",
+        "derived": true
+      },
       "Subsidiary": {
-        "column": "subsidiary",
-        "table": "subsidiary",
-        "nameColumn": "name"
-      }
-    },
-    "sublists": {
+        "kind": "ref",
+        "column": "subsidiary"
+      },
       "CustomFieldList": {
         "kind": "customFields",
         "prefix": "custentity"
       }
-    },
-    "unsupported": [],
-    "verified": false
+    }
   },
   "Accounts": {
     "table": "account",
+    "recordType": "account",
     "alias": "a",
     "keyColumn": "id",
     "replication": null,
     "where": [],
-    "columns": {
-      "Active": "isinactive",
-      "AcctNum": "acctnumber",
-      "AccountType": "accttype",
-      "Name": "acctname"
-    },
-    "refs": {
+    "fields": {
+      "Active": {
+        "kind": "column",
+        "expr": "isinactive"
+      },
       "ParentAccount": {
-        "column": "parent",
-        "table": "account",
-        "nameColumn": "acctname"
+        "kind": "ref",
+        "column": "parent"
+      },
+      "AcctNum": {
+        "kind": "column",
+        "expr": "acctnumber"
+      },
+      "AccountType": {
+        "kind": "column",
+        "expr": "accttype",
+        "valueMap": "accountType"
+      },
+      "Name": {
+        "kind": "column",
+        "expr": "acctname"
+      },
+      "Description": {
+        "kind": "column",
+        "expr": "description",
+        "derived": true
       },
       "CurrencyRef": {
-        "column": "currency",
-        "table": "currency",
-        "nameColumn": "name"
-      }
-    },
-    "sublists": {
+        "kind": "ref",
+        "column": "currency"
+      },
+      "Id": {
+        "kind": "column",
+        "expr": "id"
+      },
       "CustomFieldList": {
         "kind": "customFields",
         "prefix": "custrecord"
       }
-    },
-    "unsupported": [],
-    "verified": false
+    }
   },
   "Vendors": {
     "table": "vendor",
+    "recordType": "vendor",
     "alias": "v",
     "keyColumn": "id",
     "replication": null,
     "where": [],
-    "columns": {
-      "Active": "isinactive",
-      "AcctNum": "accountnumber",
-      "EntityId": "entityid"
-    },
-    "refs": {
+    "fields": {
+      "Active": {
+        "kind": "column",
+        "expr": "isinactive"
+      },
+      "AcctNum": {
+        "kind": "column",
+        "expr": "accountnumber"
+      },
       "CurrencyRef": {
-        "column": "currency",
-        "table": "currency",
-        "nameColumn": "name"
-      }
-    },
-    "sublists": {
+        "kind": "ref",
+        "column": "currency"
+      },
+      "Id": {
+        "kind": "column",
+        "expr": "id"
+      },
+      "CompanyName": {
+        "kind": "column",
+        "expr": "companyname",
+        "derived": true
+      },
+      "LegalName": {
+        "kind": "column",
+        "expr": "legalname",
+        "derived": true
+      },
+      "IsPerson": {
+        "kind": "column",
+        "expr": "isperson",
+        "derived": true
+      },
+      "Phone": {
+        "kind": "column",
+        "expr": "phone",
+        "derived": true
+      },
+      "FirstName": {
+        "kind": "column",
+        "expr": "firstname",
+        "derived": true
+      },
+      "LastName": {
+        "kind": "column",
+        "expr": "lastname",
+        "derived": true
+      },
+      "EntityId": {
+        "kind": "column",
+        "expr": "entityid"
+      },
       "CustomFieldList": {
         "kind": "customFields",
         "prefix": "custentity"
       }
-    },
-    "unsupported": [],
-    "verified": false
+    }
   },
   "Classifications": {
     "table": "classification",
+    "recordType": "classification",
     "alias": "cl",
     "keyColumn": "id",
     "replication": null,
     "where": [],
-    "columns": {},
-    "refs": {
-      "parent": {
-        "column": "parent",
-        "table": "classification",
-        "nameColumn": "name"
-      }
-    },
-    "sublists": {
-      "customFieldList": {
-        "kind": "customFields",
-        "prefix": "custrecord"
+    "fields": {
+      "Id": {
+        "kind": "column",
+        "expr": "id"
       },
       "classTranslationList": {
         "kind": "unsupported"
       },
+      "customFieldList": {
+        "kind": "customFields",
+        "prefix": "custrecord"
+      },
+      "includeChildren": {
+        "kind": "column",
+        "expr": "includechildren",
+        "derived": true
+      },
+      "isInactive": {
+        "kind": "column",
+        "expr": "isinactive",
+        "derived": true
+      },
+      "name": {
+        "kind": "column",
+        "expr": "name",
+        "derived": true
+      },
+      "parent": {
+        "kind": "ref",
+        "column": "parent"
+      },
       "subsidiaryList": {
         "kind": "unsupported"
       }
-    },
-    "unsupported": [],
-    "verified": false
+    }
   },
   "PriceLevel": {
     "table": "pricelevel",
@@ -159,13 +303,38 @@
     "keyColumn": "id",
     "replication": null,
     "where": [],
-    "columns": {},
-    "refs": {},
-    "sublists": {},
-    "unsupported": [
-      "UpdateExistingPrices"
-    ],
-    "verified": false
+    "fields": {
+      "Id": {
+        "kind": "column",
+        "expr": "id"
+      },
+      "Discountpct": {
+        "kind": "column",
+        "expr": "discountpct",
+        "derived": true
+      },
+      "IsInactive": {
+        "kind": "column",
+        "expr": "isinactive",
+        "derived": true
+      },
+      "IsOnline": {
+        "kind": "column",
+        "expr": "isonline",
+        "derived": true
+      },
+      "Name": {
+        "kind": "column",
+        "expr": "name",
+        "derived": true
+      },
+      "UpdateExistingPrices": {
+        "kind": "column",
+        "expr": "updateexistingprices",
+        "derived": true,
+        "optional": true
+      }
+    }
   },
   "Currencies": {
     "table": "currency",
@@ -173,662 +342,2728 @@
     "keyColumn": "id",
     "replication": null,
     "where": [],
-    "columns": {
-      "IsBaseCurrency": "isbasecurrency"
-    },
-    "refs": {},
-    "sublists": {},
-    "unsupported": [
-      "InclInFxRateUpdates"
-    ],
-    "verified": false
+    "fields": {
+      "Name": {
+        "kind": "column",
+        "expr": "name",
+        "derived": true
+      },
+      "IsBaseCurrency": {
+        "kind": "column",
+        "expr": "isbasecurrency"
+      },
+      "ExchangeRate": {
+        "kind": "column",
+        "expr": "exchangerate",
+        "derived": true
+      },
+      "Id": {
+        "kind": "column",
+        "expr": "id"
+      },
+      "InclInFxRateUpdates": {
+        "kind": "column",
+        "expr": "inclinfxrateupdates",
+        "optional": true
+      },
+      "IsInactive": {
+        "kind": "column",
+        "expr": "isinactive",
+        "derived": true
+      },
+      "Symbol": {
+        "kind": "column",
+        "expr": "symbol",
+        "derived": true
+      }
+    }
   },
   "Invoice": {
     "table": "transaction",
+    "recordType": "invoice",
     "alias": "t",
     "keyColumn": "id",
     "replication": "lastmodifieddate",
     "where": [
       "t.recordtype = 'invoice'"
     ],
-    "columns": {
-      "LastModDate": "lastmodifieddate",
-      "DateCreated": "createddate",
-      "SubTotal": "foreignsubtotal",
-      "Balance": "foreignamountunpaid",
-      "AmountPaid": "foreignamountpaid",
-      "AmountRemaining": "foreignamountunpaid",
-      "DiscountTotal": "discounttotal"
-    },
-    "refs": {
+    "lineSign": -1,
+    "fields": {
+      "Id": {
+        "kind": "column",
+        "expr": "id"
+      },
       "Department": {
+        "kind": "mainlineRef",
         "column": "department",
-        "table": "department",
-        "nameColumn": "name"
+        "note": "best-effort mapping from NetSuite docs; not verified against SOAP output",
+        "optional": true
       },
       "Class": {
+        "kind": "mainlineRef",
         "column": "class",
-        "table": "classification",
-        "nameColumn": "name"
+        "note": "best-effort mapping from NetSuite docs; not verified against SOAP output",
+        "optional": true
       },
       "Currency": {
-        "column": "currency",
-        "table": "currency",
-        "nameColumn": "name"
+        "kind": "ref",
+        "column": "currency"
       },
       "Account": {
-        "column": "account",
-        "table": "account",
-        "nameColumn": "acctname"
-      },
-      "Entity": {
-        "column": "entity",
-        "table": "entity",
-        "nameColumn": "altname"
+        "kind": "ref",
+        "column": "account"
       },
       "BillingAccount": {
+        "kind": "ref",
         "column": "billingaccount",
-        "table": "billingaccount",
-        "nameColumn": "name"
+        "note": "best-effort mapping from NetSuite docs; not verified against SOAP output",
+        "optional": true
+      },
+      "Entity": {
+        "kind": "ref",
+        "column": "entity"
+      },
+      "DateCreated": {
+        "kind": "column",
+        "expr": "createddate"
+      },
+      "DueDate": {
+        "kind": "column",
+        "expr": "duedate",
+        "derived": true
+      },
+      "LastModDate": {
+        "kind": "column",
+        "expr": "lastmodifieddate"
+      },
+      "Balance": {
+        "kind": "column",
+        "expr": "foreignamountunpaid"
+      },
+      "AmountRemaining": {
+        "kind": "column",
+        "expr": "foreignamountunpaid"
+      },
+      "AmountPaid": {
+        "kind": "column",
+        "expr": "foreignamountpaid"
+      },
+      "DiscountAmount": {
+        "kind": "column",
+        "expr": "discountamount",
+        "derived": true
+      },
+      "DiscountDate": {
+        "kind": "column",
+        "expr": "discountdate",
+        "derived": true
       },
       "DiscountItem": {
+        "kind": "ref",
         "column": "discountitem",
-        "table": "item",
-        "nameColumn": "itemid"
-      }
-    },
-    "sublists": {
+        "note": "best-effort mapping from NetSuite docs; not verified against SOAP output",
+        "optional": true
+      },
+      "DiscountRate": {
+        "kind": "column",
+        "expr": "discountrate",
+        "derived": true
+      },
+      "DiscountTotal": {
+        "kind": "column",
+        "expr": "discounttotal"
+      },
       "ItemList": {
         "kind": "transactionLines",
         "wrapper": "item"
+      },
+      "SubTotal": {
+        "kind": "column",
+        "expr": "foreignsubtotal"
+      },
+      "Status": {
+        "kind": "column",
+        "expr": "status",
+        "derived": true,
+        "display": true,
+        "stripPrefix": true
+      },
+      "TranDate": {
+        "kind": "column",
+        "expr": "trandate",
+        "derived": true
+      },
+      "TranId": {
+        "kind": "column",
+        "expr": "tranid",
+        "derived": true
       },
       "CustomFieldList": {
         "kind": "customFields",
         "prefix": "custbody"
       }
-    },
-    "unsupported": [
-      "BillingAccount",
-      "Class",
-      "Department",
-      "DiscountItem"
-    ],
-    "verified": false
+    }
   },
   "CustomerPayments": {
     "table": "transaction",
+    "recordType": "customerPayment",
     "alias": "t",
     "keyColumn": "id",
     "replication": "lastmodifieddate",
     "where": [
       "t.recordtype = 'customerpayment'"
     ],
-    "columns": {
-      "CreatedDate": "createddate",
-      "Total": "foreigntotal",
-      "Payment": "foreigntotal",
-      "Applied": "foreignamountpaid",
-      "Balance": "foreignamountunpaid"
-    },
-    "refs": {
-      "Account": {
-        "column": "account",
-        "table": "account",
-        "nameColumn": "acctname"
-      },
-      "CurrencyRef": {
-        "column": "currency",
-        "table": "currency",
-        "nameColumn": "name"
-      },
-      "CustomerRef": {
+    "joinColumns": {
+      "Balance": {
         "column": "entity",
-        "table": "entity",
-        "nameColumn": "altname"
-      },
-      "PaymentMethodRef": {
-        "column": "paymentmethod",
-        "table": "paymentmethod",
-        "nameColumn": "name"
-      },
-      "PostingPeriod": {
-        "column": "postingperiod",
-        "table": "accountingperiod",
-        "nameColumn": "periodname"
+        "table": "customer",
+        "expr": "balance"
       }
     },
-    "sublists": {
+    "fields": {
+      "Id": {
+        "kind": "column",
+        "expr": "id"
+      },
+      "Account": {
+        "kind": "ref",
+        "column": "account"
+      },
+      "AccountBookDetail": {
+        "kind": "unsupported",
+        "reason": "no SuiteQL equivalent established"
+      },
+      "Applied": {
+        "kind": "column",
+        "expr": "foreignamountpaid"
+      },
       "ApplyList": {
         "kind": "unsupported"
+      },
+      "Balance": {
+        "kind": "joinColumn",
+        "column": "entity",
+        "table": "customer",
+        "expr": "balance"
+      },
+      "CcName": {
+        "kind": "column",
+        "expr": "ccname",
+        "derived": true
+      },
+      "CcNumber": {
+        "kind": "column",
+        "expr": "ccnumber",
+        "derived": true
+      },
+      "Cleared": {
+        "kind": "column",
+        "expr": "cleared",
+        "derived": true,
+        "valueMap": "booleanString"
+      },
+      "ClearedDate": {
+        "kind": "column",
+        "expr": "cleareddate",
+        "derived": true
+      },
+      "ConsolidateBalance": {
+        "kind": "unsupported",
+        "reason": "no SuiteQL equivalent established"
+      },
+      "CreatedDate": {
+        "kind": "column",
+        "expr": "createddate"
+      },
+      "CurrencyRef": {
+        "kind": "ref",
+        "column": "currency"
+      },
+      "CustomerRef": {
+        "kind": "ref",
+        "column": "entity"
+      },
+      "ExchangeRate": {
+        "kind": "column",
+        "expr": "exchangerate",
+        "derived": true
+      },
+      "ExternalId": {
+        "kind": "column",
+        "expr": "externalid",
+        "derived": true
+      },
+      "IsRecurringPayment": {
+        "kind": "unsupported",
+        "reason": "no SuiteQL equivalent established"
+      },
+      "LastModifiedDate": {
+        "kind": "column",
+        "expr": "lastmodifieddate",
+        "derived": true
+      },
+      "Payment": {
+        "kind": "column",
+        "expr": "foreigntotal"
+      },
+      "PaymentMethodRef": {
+        "kind": "ref",
+        "column": "paymentmethod"
+      },
+      "PostingPeriod": {
+        "kind": "ref",
+        "column": "postingperiod"
+      },
+      "Status": {
+        "kind": "column",
+        "expr": "status",
+        "derived": true,
+        "display": true,
+        "stripPrefix": true
+      },
+      "Total": {
+        "kind": "column",
+        "expr": "foreigntotal"
+      },
+      "TranDate": {
+        "kind": "column",
+        "expr": "trandate",
+        "derived": true
+      },
+      "TranId": {
+        "kind": "column",
+        "expr": "tranid",
+        "derived": true
       },
       "CustomFieldList": {
         "kind": "customFields",
         "prefix": "custbody"
       }
-    },
-    "unsupported": [
-      "AccountBookDetail",
-      "ConsolidateBalance",
-      "IsRecurringPayment"
-    ],
-    "verified": false
+    }
   },
   "VendorBills": {
     "table": "transaction",
+    "recordType": "vendorBill",
     "alias": "t",
     "keyColumn": "id",
     "replication": "lastmodifieddate",
     "where": [
       "t.recordtype = 'vendorbill'"
     ],
-    "columns": {
-      "LastModDate": "lastmodifieddate"
-    },
-    "refs": {
+    "fields": {
+      "Id": {
+        "kind": "column",
+        "expr": "id"
+      },
       "DepartmentRef": {
+        "kind": "mainlineRef",
         "column": "department",
-        "table": "department",
-        "nameColumn": "name"
+        "note": "best-effort mapping from NetSuite docs; not verified against SOAP output",
+        "optional": true
       },
       "ClassRef": {
+        "kind": "mainlineRef",
         "column": "class",
-        "table": "classification",
-        "nameColumn": "name"
+        "note": "best-effort mapping from NetSuite docs; not verified against SOAP output",
+        "optional": true
       },
       "CurrencyRef": {
-        "column": "currency",
-        "table": "currency",
-        "nameColumn": "name"
+        "kind": "ref",
+        "column": "currency"
       },
       "AccountRef": {
-        "column": "account",
-        "table": "account",
-        "nameColumn": "acctname"
+        "kind": "ref",
+        "column": "account"
       },
       "EntityRef": {
-        "column": "entity",
-        "table": "entity",
-        "nameColumn": "altname"
-      }
-    },
-    "sublists": {
+        "kind": "ref",
+        "column": "entity"
+      },
+      "TranId": {
+        "kind": "column",
+        "expr": "tranid",
+        "derived": true
+      },
+      "TranNum": {
+        "kind": "column",
+        "expr": "transactionnumber",
+        "derived": true
+      },
+      "TranDate": {
+        "kind": "column",
+        "expr": "trandate",
+        "derived": true
+      },
+      "DateCreated": {
+        "kind": "column",
+        "expr": "datecreated",
+        "derived": true
+      },
+      "LastModDate": {
+        "kind": "column",
+        "expr": "lastmodifieddate"
+      },
+      "Total": {
+        "kind": "column",
+        "expr": "usertotal",
+        "derived": true
+      },
+      "Status": {
+        "kind": "column",
+        "expr": "status",
+        "derived": true,
+        "display": true,
+        "stripPrefix": true
+      },
       "CustomFieldList": {
         "kind": "customFields",
         "prefix": "custbody"
       }
-    },
-    "unsupported": [
-      "ClassRef",
-      "DepartmentRef"
-    ],
-    "verified": false
+    }
   },
   "VendorPayment": {
     "table": "transaction",
+    "recordType": "vendorPayment",
     "alias": "t",
     "keyColumn": "id",
     "replication": "lastmodifieddate",
     "where": [
       "t.recordtype = 'vendorpayment'"
     ],
-    "columns": {
-      "LastModDate": "lastmodifieddate"
-    },
-    "refs": {
+    "fields": {
+      "Id": {
+        "kind": "column",
+        "expr": "id"
+      },
       "DepartmentRef": {
+        "kind": "mainlineRef",
         "column": "department",
-        "table": "department",
-        "nameColumn": "name"
+        "note": "best-effort mapping from NetSuite docs; not verified against SOAP output",
+        "optional": true
       },
       "ClassRef": {
+        "kind": "mainlineRef",
         "column": "class",
-        "table": "classification",
-        "nameColumn": "name"
+        "note": "best-effort mapping from NetSuite docs; not verified against SOAP output",
+        "optional": true
       },
       "CurrencyRef": {
-        "column": "currency",
-        "table": "currency",
-        "nameColumn": "name"
+        "kind": "ref",
+        "column": "currency"
       },
       "AccountRef": {
-        "column": "account",
-        "table": "account",
-        "nameColumn": "acctname"
+        "kind": "ref",
+        "column": "account"
       },
       "EntityRef": {
-        "column": "entity",
-        "table": "entity",
-        "nameColumn": "altname"
-      }
-    },
-    "sublists": {
+        "kind": "ref",
+        "column": "entity"
+      },
+      "TranId": {
+        "kind": "column",
+        "expr": "tranid",
+        "derived": true
+      },
+      "TranNum": {
+        "kind": "column",
+        "expr": "transactionnumber",
+        "derived": true
+      },
+      "TranDate": {
+        "kind": "column",
+        "expr": "trandate",
+        "derived": true
+      },
+      "DateCreated": {
+        "kind": "column",
+        "expr": "datecreated",
+        "derived": true
+      },
+      "LastModDate": {
+        "kind": "column",
+        "expr": "lastmodifieddate"
+      },
+      "Balance": {
+        "kind": "column",
+        "expr": "balance",
+        "derived": true
+      },
+      "Amount": {
+        "kind": "column",
+        "expr": "total",
+        "derived": true
+      },
+      "Status": {
+        "kind": "column",
+        "expr": "status",
+        "derived": true,
+        "display": true,
+        "stripPrefix": true
+      },
       "CustomFieldList": {
         "kind": "customFields",
         "prefix": "custbody"
       }
-    },
-    "unsupported": [
-      "ClassRef",
-      "DepartmentRef"
-    ],
-    "verified": false
+    }
   },
   "InventoryTransfer": {
     "table": "transaction",
+    "recordType": "inventoryTransfer",
     "alias": "t",
     "keyColumn": "id",
     "replication": "lastmodifieddate",
     "where": [
       "t.recordtype = 'inventorytransfer'"
     ],
-    "columns": {
-      "LastModDate": "lastmodifieddate"
-    },
-    "refs": {
+    "fields": {
+      "Id": {
+        "kind": "column",
+        "expr": "id"
+      },
       "ClassRef": {
+        "kind": "mainlineRef",
         "column": "class",
-        "table": "classification",
-        "nameColumn": "name"
+        "note": "best-effort mapping from NetSuite docs; not verified against SOAP output",
+        "optional": true
       },
-      "DepartmentRef": {
-        "column": "department",
-        "table": "department",
-        "nameColumn": "name"
-      },
-      "LocationRef": {
-        "column": "location",
-        "table": "location",
-        "nameColumn": "name"
-      },
-      "PostingPeriodRef": {
-        "column": "postingperiod",
-        "table": "accountingperiod",
-        "nameColumn": "periodname"
-      },
-      "SubsidiaryRef": {
-        "column": "subsidiary",
-        "table": "subsidiary",
-        "nameColumn": "name"
-      },
-      "TransferLocationRef": {
-        "column": "transferlocation",
-        "table": "location",
-        "nameColumn": "name"
-      }
-    },
-    "sublists": {
-      "InventoryList": {
-        "kind": "transactionLines",
-        "wrapper": "inventory"
+      "CreatedDate": {
+        "kind": "column",
+        "expr": "createddate",
+        "derived": true
       },
       "CustomFieldList": {
         "kind": "customFields",
         "prefix": "custbody"
+      },
+      "DepartmentRef": {
+        "kind": "mainlineRef",
+        "column": "department",
+        "note": "best-effort mapping from NetSuite docs; not verified against SOAP output",
+        "optional": true
+      },
+      "InventoryList": {
+        "kind": "transactionLines",
+        "wrapper": "inventory"
+      },
+      "LastModDate": {
+        "kind": "column",
+        "expr": "lastmodifieddate"
+      },
+      "LocationRef": {
+        "kind": "ref",
+        "column": "location"
+      },
+      "Memo": {
+        "kind": "column",
+        "expr": "memo",
+        "derived": true
+      },
+      "PostingPeriodRef": {
+        "kind": "ref",
+        "column": "postingperiod"
+      },
+      "SubsidiaryRef": {
+        "kind": "ref",
+        "column": "subsidiary"
+      },
+      "TranDate": {
+        "kind": "column",
+        "expr": "trandate",
+        "derived": true
+      },
+      "TranId": {
+        "kind": "column",
+        "expr": "tranid",
+        "derived": true
+      },
+      "TransferLocationRef": {
+        "kind": "ref",
+        "column": "transferlocation"
       }
-    },
-    "unsupported": [
-      "ClassRef",
-      "DepartmentRef"
-    ],
-    "verified": false
+    }
   },
   "InventoryAdjustment": {
     "table": "transaction",
+    "recordType": "inventoryAdjustment",
     "alias": "t",
     "keyColumn": "id",
     "replication": "lastmodifieddate",
     "where": [
       "t.recordtype = 'inventoryadjustment'"
     ],
-    "columns": {
-      "LastModDate": "lastmodifieddate"
-    },
-    "refs": {
+    "fields": {
+      "Id": {
+        "kind": "column",
+        "expr": "id"
+      },
       "AccountRef": {
-        "column": "account",
-        "table": "account",
-        "nameColumn": "acctname"
+        "kind": "ref",
+        "column": "account"
       },
       "AdjLocationRef": {
-        "column": "adjlocation",
-        "table": "location",
-        "nameColumn": "name"
+        "kind": "mainlineRef",
+        "column": "location",
+        "note": "best-effort mapping from NetSuite docs; not verified against SOAP output",
+        "optional": true
       },
       "ClassRef": {
+        "kind": "mainlineRef",
         "column": "class",
-        "table": "classification",
-        "nameColumn": "name"
+        "note": "best-effort mapping from NetSuite docs; not verified against SOAP output",
+        "optional": true
+      },
+      "CreatedDate": {
+        "kind": "column",
+        "expr": "createddate",
+        "derived": true
       },
       "CustomerRef": {
-        "column": "entity",
-        "table": "entity",
-        "nameColumn": "altname"
+        "kind": "ref",
+        "column": "entity"
+      },
+      "CustomFormRef": {
+        "kind": "ref",
+        "column": "customform",
+        "note": "best-effort mapping from NetSuite docs; not verified against SOAP output",
+        "optional": true
       },
       "DepartmentRef": {
+        "kind": "mainlineRef",
         "column": "department",
-        "table": "department",
-        "nameColumn": "name"
+        "note": "best-effort mapping from NetSuite docs; not verified against SOAP output",
+        "optional": true
+      },
+      "EstimatedTotalValue": {
+        "kind": "column",
+        "expr": "estimatedtotalvalue",
+        "derived": true
+      },
+      "LastModDate": {
+        "kind": "column",
+        "expr": "lastmodifieddate"
       },
       "LocationRef": {
-        "column": "location",
-        "table": "location",
-        "nameColumn": "name"
+        "kind": "ref",
+        "column": "location"
+      },
+      "Memo": {
+        "kind": "column",
+        "expr": "memo",
+        "derived": true
       },
       "PostingPeriodRef": {
-        "column": "postingperiod",
-        "table": "accountingperiod",
-        "nameColumn": "periodname"
+        "kind": "ref",
+        "column": "postingperiod"
       },
       "SubsidiaryRef": {
-        "column": "subsidiary",
-        "table": "subsidiary",
-        "nameColumn": "name"
-      }
-    },
-    "sublists": {
+        "kind": "ref",
+        "column": "subsidiary"
+      },
+      "TranDate": {
+        "kind": "column",
+        "expr": "trandate",
+        "derived": true
+      },
+      "TranId": {
+        "kind": "column",
+        "expr": "tranid",
+        "derived": true
+      },
       "CustomFieldList": {
         "kind": "customFields",
         "prefix": "custbody"
       }
-    },
-    "unsupported": [
-      "AdjLocationRef",
-      "ClassRef",
-      "CustomFormRef",
-      "DepartmentRef"
-    ],
-    "verified": false
+    }
   },
   "SalesOrders": {
     "table": "transaction",
+    "recordType": "salesOrder",
     "alias": "t",
     "keyColumn": "id",
     "replication": "lastmodifieddate",
     "where": [
       "t.recordtype = 'salesorder'"
     ],
-    "columns": {
-      "DateCreated": "createddate"
-    },
-    "refs": {
-      "Department": {
-        "column": "department",
-        "table": "department",
-        "nameColumn": "name"
+    "lineSign": -1,
+    "fields": {
+      "Id": {
+        "kind": "column",
+        "expr": "id"
+      },
+      "AccountingBookDetailList": {
+        "kind": "unsupported",
+        "reason": "sublist not mapped"
+      },
+      "ActualShipDate": {
+        "kind": "column",
+        "expr": "actualshipdate",
+        "derived": true
+      },
+      "AltHandlingCost": {
+        "kind": "column",
+        "expr": "althandlingcost",
+        "derived": true
+      },
+      "AltSalesTotal": {
+        "kind": "column",
+        "expr": "altsalestotal",
+        "derived": true
+      },
+      "AltShippingCost": {
+        "kind": "column",
+        "expr": "altshippingcost",
+        "derived": true
+      },
+      "AuthCode": {
+        "kind": "column",
+        "expr": "authcode",
+        "derived": true
+      },
+      "Balance": {
+        "kind": "column",
+        "expr": "balance",
+        "derived": true
+      },
+      "BillAddressList": {
+        "kind": "unsupported",
+        "reason": "sublist not mapped"
+      },
+      "BillingAddress": {
+        "kind": "column",
+        "expr": "billingaddress",
+        "derived": true
+      },
+      "BillingSchedule": {
+        "kind": "column",
+        "expr": "billingschedule",
+        "derived": true
+      },
+      "CanHaveStackable": {
+        "kind": "column",
+        "expr": "canhavestackable",
+        "derived": true
+      },
+      "CcApproved": {
+        "kind": "column",
+        "expr": "ccapproved",
+        "derived": true
+      },
+      "CcAvsStreetMatch": {
+        "kind": "column",
+        "expr": "ccavsstreetmatch",
+        "derived": true
+      },
+      "CcAvsZipMatch": {
+        "kind": "column",
+        "expr": "ccavszipmatch",
+        "derived": true
+      },
+      "CcExpireDate": {
+        "kind": "column",
+        "expr": "ccexpiredate",
+        "derived": true
+      },
+      "CcName": {
+        "kind": "column",
+        "expr": "ccname",
+        "derived": true
+      },
+      "CcNumber": {
+        "kind": "column",
+        "expr": "ccnumber",
+        "derived": true
+      },
+      "CcSecurityCode": {
+        "kind": "column",
+        "expr": "ccsecuritycode",
+        "derived": true
+      },
+      "CcSecurityCodeMatch": {
+        "kind": "column",
+        "expr": "ccsecuritycodematch",
+        "derived": true
+      },
+      "CcStreet": {
+        "kind": "column",
+        "expr": "ccstreet",
+        "derived": true
+      },
+      "CcZipCode": {
+        "kind": "column",
+        "expr": "cczipcode",
+        "derived": true
+      },
+      "CheckNumber": {
+        "kind": "column",
+        "expr": "checknumber",
+        "derived": true
       },
       "Class": {
+        "kind": "mainlineRef",
         "column": "class",
-        "table": "classification",
-        "nameColumn": "name"
+        "note": "best-effort mapping from NetSuite docs; not verified against SOAP output",
+        "optional": true
+      },
+      "ContribPct": {
+        "kind": "column",
+        "expr": "contribpct",
+        "derived": true
+      },
+      "CreatedDate": {
+        "kind": "column",
+        "expr": "createddate",
+        "derived": true
+      },
+      "CreatedFrom": {
+        "kind": "column",
+        "expr": "createdfrom",
+        "derived": true
+      },
+      "CreditCard": {
+        "kind": "column",
+        "expr": "creditcard",
+        "derived": true
+      },
+      "CreditCardProcessor": {
+        "kind": "column",
+        "expr": "creditcardprocessor",
+        "derived": true
       },
       "Currency": {
-        "column": "currency",
-        "table": "currency",
-        "nameColumn": "name"
+        "kind": "ref",
+        "column": "currency"
       },
-      "Entity": {
-        "column": "entity",
-        "table": "entity",
-        "nameColumn": "altname"
-      },
-      "Location": {
-        "column": "location",
-        "table": "location",
-        "nameColumn": "name"
-      },
-      "Subsidiary": {
-        "column": "subsidiary",
-        "table": "subsidiary",
-        "nameColumn": "name"
-      },
-      "Job": {
-        "column": "job",
-        "table": "entity",
-        "nameColumn": "altname"
-      },
-      "Partner": {
-        "column": "partner",
-        "table": "entity",
-        "nameColumn": "altname"
-      },
-      "SalesRep": {
-        "column": "salesrep",
-        "table": "entity",
-        "nameColumn": "altname"
-      }
-    },
-    "sublists": {
-      "ItemList": {
-        "kind": "transactionLines",
-        "wrapper": "item"
+      "CurrencyName": {
+        "kind": "column",
+        "expr": "currencyname",
+        "derived": true
       },
       "CustomFieldList": {
         "kind": "customFields",
         "prefix": "custbody"
+      },
+      "CustomForm": {
+        "kind": "column",
+        "expr": "customform",
+        "derived": true
+      },
+      "DebitCardIssueNo": {
+        "kind": "column",
+        "expr": "debitcardissueno",
+        "derived": true
+      },
+      "DeferredRevenue": {
+        "kind": "column",
+        "expr": "deferredrevenue",
+        "derived": true
+      },
+      "Department": {
+        "kind": "mainlineRef",
+        "column": "department",
+        "note": "best-effort mapping from NetSuite docs; not verified against SOAP output",
+        "optional": true
+      },
+      "DiscountItem": {
+        "kind": "column",
+        "expr": "discountitem",
+        "derived": true
+      },
+      "DiscountRate": {
+        "kind": "column",
+        "expr": "discountrate",
+        "derived": true
+      },
+      "DiscountTotal": {
+        "kind": "column",
+        "expr": "discounttotal",
+        "derived": true
+      },
+      "DrAccount": {
+        "kind": "column",
+        "expr": "draccount",
+        "derived": true
+      },
+      "DynamicDescriptor": {
+        "kind": "column",
+        "expr": "dynamicdescriptor",
+        "derived": true
+      },
+      "Email": {
+        "kind": "column",
+        "expr": "email",
+        "derived": true
+      },
+      "EndDate": {
+        "kind": "column",
+        "expr": "enddate",
+        "derived": true
+      },
+      "Entity": {
+        "kind": "ref",
+        "column": "entity"
+      },
+      "EntityTaxRegNum": {
+        "kind": "column",
+        "expr": "entitytaxregnum",
+        "derived": true
+      },
+      "EstGrossProfit": {
+        "kind": "column",
+        "expr": "estgrossprofit",
+        "derived": true
+      },
+      "EstGrossProfitPercent": {
+        "kind": "column",
+        "expr": "estgrossprofitpercent",
+        "derived": true
+      },
+      "ExchangeRate": {
+        "kind": "column",
+        "expr": "exchangerate",
+        "derived": true
+      },
+      "ExcludeCommission": {
+        "kind": "column",
+        "expr": "excludecommission",
+        "derived": true
+      },
+      "Fax": {
+        "kind": "column",
+        "expr": "fax",
+        "derived": true
+      },
+      "Fob": {
+        "kind": "column",
+        "expr": "fob",
+        "derived": true
+      },
+      "FxAccount": {
+        "kind": "column",
+        "expr": "fxaccount",
+        "derived": true
+      },
+      "GetAuth": {
+        "kind": "column",
+        "expr": "getauth",
+        "derived": true
+      },
+      "GiftCertApplied": {
+        "kind": "column",
+        "expr": "giftcertapplied",
+        "derived": true
+      },
+      "GiftCertRedemptionList": {
+        "kind": "unsupported",
+        "reason": "sublist not mapped"
+      },
+      "HandlingCost": {
+        "kind": "column",
+        "expr": "handlingcost",
+        "derived": true
+      },
+      "HandlingMode": {
+        "kind": "column",
+        "expr": "handlingmode",
+        "derived": true
+      },
+      "HandlingTax1Rate": {
+        "kind": "column",
+        "expr": "handlingtax1rate",
+        "derived": true
+      },
+      "HandlingTax2Rate": {
+        "kind": "column",
+        "expr": "handlingtax2rate",
+        "derived": true
+      },
+      "HandlingTaxCode": {
+        "kind": "column",
+        "expr": "handlingtaxcode",
+        "derived": true
+      },
+      "IgnoreAvs": {
+        "kind": "column",
+        "expr": "ignoreavs",
+        "derived": true
+      },
+      "InputAuthCode": {
+        "kind": "column",
+        "expr": "inputauthcode",
+        "derived": true
+      },
+      "InputReferenceCode": {
+        "kind": "column",
+        "expr": "inputreferencecode",
+        "derived": true
+      },
+      "IntercoStatus": {
+        "kind": "column",
+        "expr": "intercostatus",
+        "derived": true
+      },
+      "IntercoTransaction": {
+        "kind": "column",
+        "expr": "intercotransaction",
+        "derived": true
+      },
+      "IsMultiShipTo": {
+        "kind": "column",
+        "expr": "ismultishipto",
+        "derived": true
+      },
+      "IsRecurringPayment": {
+        "kind": "column",
+        "expr": "isrecurringpayment",
+        "derived": true
+      },
+      "IsTaxable": {
+        "kind": "column",
+        "expr": "istaxable",
+        "derived": true
+      },
+      "ItemList": {
+        "kind": "transactionLines",
+        "wrapper": "item"
+      },
+      "Job": {
+        "kind": "ref",
+        "column": "job"
+      },
+      "LastModifiedDate": {
+        "kind": "column",
+        "expr": "lastmodifieddate",
+        "derived": true
+      },
+      "LeadSource": {
+        "kind": "column",
+        "expr": "leadsource",
+        "derived": true
+      },
+      "LinkedTrackingNumbers": {
+        "kind": "column",
+        "expr": "linkedtrackingnumbers",
+        "derived": true
+      },
+      "Location": {
+        "kind": "ref",
+        "column": "location"
+      },
+      "Memo": {
+        "kind": "column",
+        "expr": "memo",
+        "derived": true
+      },
+      "Message": {
+        "kind": "column",
+        "expr": "message",
+        "derived": true
+      },
+      "MessageSel": {
+        "kind": "column",
+        "expr": "messagesel",
+        "derived": true
+      },
+      "NextBill": {
+        "kind": "column",
+        "expr": "nextbill",
+        "derived": true
+      },
+      "Nexus": {
+        "kind": "column",
+        "expr": "nexus",
+        "derived": true
+      },
+      "OneTime": {
+        "kind": "column",
+        "expr": "onetime",
+        "derived": true
+      },
+      "Opportunity": {
+        "kind": "column",
+        "expr": "opportunity",
+        "derived": true
+      },
+      "OrderStatus": {
+        "kind": "column",
+        "expr": "orderstatus",
+        "derived": true
+      },
+      "OtherRefNum": {
+        "kind": "column",
+        "expr": "otherrefnum",
+        "derived": true
+      },
+      "OutputAuthCode": {
+        "kind": "column",
+        "expr": "outputauthcode",
+        "derived": true
+      },
+      "OutputReferenceCode": {
+        "kind": "column",
+        "expr": "outputreferencecode",
+        "derived": true
+      },
+      "Partner": {
+        "kind": "ref",
+        "column": "partner"
+      },
+      "PartnersList": {
+        "kind": "unsupported",
+        "reason": "sublist not mapped"
+      },
+      "PaymentCardCsc": {
+        "kind": "column",
+        "expr": "paymentcardcsc",
+        "derived": true
+      },
+      "PaymentEventDate": {
+        "kind": "column",
+        "expr": "paymenteventdate",
+        "derived": true
+      },
+      "PaymentEventHoldReason": {
+        "kind": "column",
+        "expr": "paymenteventholdreason",
+        "derived": true
+      },
+      "PaymentEventResult": {
+        "kind": "column",
+        "expr": "paymenteventresult",
+        "derived": true
+      },
+      "PaymentEventType": {
+        "kind": "column",
+        "expr": "paymenteventtype",
+        "derived": true
+      },
+      "PaymentEventUpdatedBy": {
+        "kind": "column",
+        "expr": "paymenteventupdatedby",
+        "derived": true
+      },
+      "PaymentMethod": {
+        "kind": "column",
+        "expr": "paymentmethod",
+        "derived": true
+      },
+      "PaymentOperation": {
+        "kind": "column",
+        "expr": "paymentoperation",
+        "derived": true
+      },
+      "PaymentOption": {
+        "kind": "column",
+        "expr": "paymentoption",
+        "derived": true
+      },
+      "PaymentProcessingProfile": {
+        "kind": "column",
+        "expr": "paymentprocessingprofile",
+        "derived": true
+      },
+      "PaypalAuthId": {
+        "kind": "column",
+        "expr": "paypalauthid",
+        "derived": true
+      },
+      "PaypalProcess": {
+        "kind": "column",
+        "expr": "paypalprocess",
+        "derived": true
+      },
+      "PayPalStatus": {
+        "kind": "column",
+        "expr": "paypalstatus",
+        "derived": true
+      },
+      "PayPalTranId": {
+        "kind": "column",
+        "expr": "paypaltranid",
+        "derived": true
+      },
+      "PnRefNum": {
+        "kind": "column",
+        "expr": "pnrefnum",
+        "derived": true
+      },
+      "PromoCode": {
+        "kind": "column",
+        "expr": "promocode",
+        "derived": true
+      },
+      "PromotionsList": {
+        "kind": "unsupported",
+        "reason": "sublist not mapped"
+      },
+      "RecognizedRevenue": {
+        "kind": "column",
+        "expr": "recognizedrevenue",
+        "derived": true
+      },
+      "RecurAnnually": {
+        "kind": "column",
+        "expr": "recurannually",
+        "derived": true
+      },
+      "RecurMonthly": {
+        "kind": "column",
+        "expr": "recurmonthly",
+        "derived": true
+      },
+      "RecurQuarterly": {
+        "kind": "column",
+        "expr": "recurquarterly",
+        "derived": true
+      },
+      "RecurWeekly": {
+        "kind": "column",
+        "expr": "recurweekly",
+        "derived": true
+      },
+      "RevCommitStatus": {
+        "kind": "column",
+        "expr": "revcommitstatus",
+        "derived": true
+      },
+      "RevenueStatus": {
+        "kind": "column",
+        "expr": "revenuestatus",
+        "derived": true
+      },
+      "RevRecEndDate": {
+        "kind": "column",
+        "expr": "revrecenddate",
+        "derived": true
+      },
+      "RevRecOnRevCommitment": {
+        "kind": "column",
+        "expr": "revreconrevcommitment",
+        "derived": true
+      },
+      "RevRecSchedule": {
+        "kind": "column",
+        "expr": "revrecschedule",
+        "derived": true
+      },
+      "RevRecStartDate": {
+        "kind": "column",
+        "expr": "revrecstartdate",
+        "derived": true
+      },
+      "SalesEffectiveDate": {
+        "kind": "column",
+        "expr": "saleseffectivedate",
+        "derived": true
+      },
+      "SalesGroup": {
+        "kind": "column",
+        "expr": "salesgroup",
+        "derived": true
+      },
+      "SalesRep": {
+        "kind": "ref",
+        "column": "employee",
+        "note": "best-effort mapping from NetSuite docs; not verified against SOAP output",
+        "optional": true
+      },
+      "SalesTeamList": {
+        "kind": "unsupported",
+        "reason": "sublist not mapped"
+      },
+      "SaveOnAuthDecline": {
+        "kind": "column",
+        "expr": "saveonauthdecline",
+        "derived": true
+      },
+      "ShipAddressList": {
+        "kind": "unsupported",
+        "reason": "sublist not mapped"
+      },
+      "ShipComplete": {
+        "kind": "column",
+        "expr": "shipcomplete",
+        "derived": true
+      },
+      "ShipDate": {
+        "kind": "column",
+        "expr": "shipdate",
+        "derived": true
+      },
+      "ShipGroupList": {
+        "kind": "unsupported",
+        "reason": "sublist not mapped"
+      },
+      "ShipIsResidential": {
+        "kind": "column",
+        "expr": "shipisresidential",
+        "derived": true
+      },
+      "ShipMethod": {
+        "kind": "column",
+        "expr": "shipmethod",
+        "derived": true
+      },
+      "ShippingAddress": {
+        "kind": "column",
+        "expr": "shippingaddress",
+        "derived": true
+      },
+      "ShippingCost": {
+        "kind": "column",
+        "expr": "shippingcost",
+        "derived": true
+      },
+      "ShippingTax1Rate": {
+        "kind": "column",
+        "expr": "shippingtax1rate",
+        "derived": true
+      },
+      "ShippingTax2Rate": {
+        "kind": "column",
+        "expr": "shippingtax2rate",
+        "derived": true
+      },
+      "ShippingTaxCode": {
+        "kind": "column",
+        "expr": "shippingtaxcode",
+        "derived": true
+      },
+      "ShopperIpAddress": {
+        "kind": "column",
+        "expr": "shopperipaddress",
+        "derived": true
+      },
+      "Source": {
+        "kind": "column",
+        "expr": "source",
+        "derived": true
+      },
+      "StartDate": {
+        "kind": "column",
+        "expr": "startdate",
+        "derived": true
+      },
+      "Status": {
+        "kind": "column",
+        "expr": "status",
+        "derived": true,
+        "display": true,
+        "stripPrefix": true
+      },
+      "Subsidiary": {
+        "kind": "ref",
+        "column": "subsidiary"
+      },
+      "SubsidiaryTaxRegNum": {
+        "kind": "column",
+        "expr": "subsidiarytaxregnum",
+        "derived": true
+      },
+      "SubTotal": {
+        "kind": "column",
+        "expr": "subtotal",
+        "derived": true
+      },
+      "SyncPartnerTeams": {
+        "kind": "column",
+        "expr": "syncpartnerteams",
+        "derived": true
+      },
+      "SyncSalesTeams": {
+        "kind": "column",
+        "expr": "syncsalesteams",
+        "derived": true
+      },
+      "Tax2Total": {
+        "kind": "column",
+        "expr": "tax2total",
+        "derived": true
+      },
+      "TaxDetailsList": {
+        "kind": "unsupported",
+        "reason": "sublist not mapped"
+      },
+      "TaxDetailsOverride": {
+        "kind": "column",
+        "expr": "taxdetailsoverride",
+        "derived": true
+      },
+      "TaxItem": {
+        "kind": "column",
+        "expr": "taxitem",
+        "derived": true
+      },
+      "TaxPointDate": {
+        "kind": "column",
+        "expr": "taxpointdate",
+        "derived": true
+      },
+      "TaxRate": {
+        "kind": "column",
+        "expr": "taxrate",
+        "derived": true
+      },
+      "TaxRegOverride": {
+        "kind": "column",
+        "expr": "taxregoverride",
+        "derived": true
+      },
+      "TaxTotal": {
+        "kind": "column",
+        "expr": "taxtotal",
+        "derived": true
+      },
+      "Terms": {
+        "kind": "column",
+        "expr": "terms",
+        "derived": true
+      },
+      "ThreeDStatusCode": {
+        "kind": "column",
+        "expr": "threedstatuscode",
+        "derived": true
+      },
+      "ToBeEmailed": {
+        "kind": "column",
+        "expr": "tobeemailed",
+        "derived": true
+      },
+      "ToBeFaxed": {
+        "kind": "column",
+        "expr": "tobefaxed",
+        "derived": true
+      },
+      "ToBePrinted": {
+        "kind": "column",
+        "expr": "tobeprinted",
+        "derived": true
+      },
+      "Total": {
+        "kind": "column",
+        "expr": "total",
+        "derived": true
+      },
+      "TotalCostEstimate": {
+        "kind": "column",
+        "expr": "totalcostestimate",
+        "derived": true
+      },
+      "TrackingNumbers": {
+        "kind": "column",
+        "expr": "trackingnumbers",
+        "derived": true
+      },
+      "TranDate": {
+        "kind": "column",
+        "expr": "trandate",
+        "derived": true
+      },
+      "TranId": {
+        "kind": "column",
+        "expr": "tranid",
+        "derived": true
+      },
+      "TranIsVsoeBundle": {
+        "kind": "column",
+        "expr": "tranisvsoebundle",
+        "derived": true
+      },
+      "ValidFrom": {
+        "kind": "column",
+        "expr": "validfrom",
+        "derived": true
+      },
+      "VatRegNum": {
+        "kind": "column",
+        "expr": "vatregnum",
+        "derived": true
+      },
+      "VsoeAutoCalc": {
+        "kind": "column",
+        "expr": "vsoeautocalc",
+        "derived": true
       }
-    },
-    "unsupported": [
-      "Class",
-      "Department",
-      "SalesRep"
-    ],
-    "verified": false
+    }
   },
   "CreditMemos": {
     "table": "transaction",
+    "recordType": "creditMemo",
     "alias": "t",
     "keyColumn": "id",
     "replication": "lastmodifieddate",
     "where": [
       "t.recordtype = 'creditmemo'"
     ],
-    "columns": {
-      "DateCreated": "createddate"
-    },
-    "refs": {
-      "Department": {
-        "column": "department",
-        "table": "department",
-        "nameColumn": "name"
-      },
-      "Class": {
-        "column": "class",
-        "table": "classification",
-        "nameColumn": "name"
-      },
-      "Currency": {
-        "column": "currency",
-        "table": "currency",
-        "nameColumn": "name"
+    "fields": {
+      "Id": {
+        "kind": "column",
+        "expr": "id"
       },
       "Account": {
-        "column": "account",
-        "table": "account",
-        "nameColumn": "acctname"
+        "kind": "ref",
+        "column": "account"
       },
-      "Entity": {
-        "column": "entity",
-        "table": "entity",
-        "nameColumn": "altname"
+      "AccountingBookDetailList": {
+        "kind": "unsupported",
+        "reason": "sublist not mapped"
       },
-      "PostingPeriod": {
-        "column": "postingperiod",
-        "table": "accountingperiod",
-        "nameColumn": "periodname"
+      "AltHandlingCost": {
+        "kind": "column",
+        "expr": "althandlingcost",
+        "derived": true
       },
-      "Job": {
-        "column": "job",
-        "table": "entity",
-        "nameColumn": "altname"
+      "AltShippingCost": {
+        "kind": "column",
+        "expr": "altshippingcost",
+        "derived": true
       },
-      "Location": {
-        "column": "location",
-        "table": "location",
-        "nameColumn": "name"
+      "AmountPaid": {
+        "kind": "column",
+        "expr": "amountpaid",
+        "derived": true
       },
-      "Partner": {
-        "column": "partner",
-        "table": "entity",
-        "nameColumn": "altname"
+      "AmountRemaining": {
+        "kind": "column",
+        "expr": "amountremaining",
+        "derived": true
       },
-      "SalesRep": {
-        "column": "salesrep",
-        "table": "entity",
-        "nameColumn": "altname"
-      },
-      "Subsidiary": {
-        "column": "subsidiary",
-        "table": "subsidiary",
-        "nameColumn": "name"
-      }
-    },
-    "sublists": {
-      "ItemList": {
-        "kind": "transactionLines",
-        "wrapper": "item"
+      "Applied": {
+        "kind": "column",
+        "expr": "applied",
+        "derived": true
       },
       "ApplyList": {
         "kind": "unsupported"
       },
+      "AutoApply": {
+        "kind": "column",
+        "expr": "autoapply",
+        "derived": true
+      },
+      "Balance": {
+        "kind": "column",
+        "expr": "balance",
+        "derived": true
+      },
+      "BillAddressList": {
+        "kind": "unsupported",
+        "reason": "sublist not mapped"
+      },
+      "BillingAddress": {
+        "kind": "column",
+        "expr": "billingaddress",
+        "derived": true
+      },
+      "Class": {
+        "kind": "mainlineRef",
+        "column": "class",
+        "note": "best-effort mapping from NetSuite docs; not verified against SOAP output",
+        "optional": true
+      },
+      "ContribPct": {
+        "kind": "column",
+        "expr": "contribpct",
+        "derived": true
+      },
+      "CreatedDate": {
+        "kind": "column",
+        "expr": "createddate",
+        "derived": true
+      },
+      "CreatedFrom": {
+        "kind": "column",
+        "expr": "createdfrom",
+        "derived": true
+      },
+      "Currency": {
+        "kind": "ref",
+        "column": "currency"
+      },
+      "CurrencyName": {
+        "kind": "column",
+        "expr": "currencyname",
+        "derived": true
+      },
       "CustomFieldList": {
         "kind": "customFields",
         "prefix": "custbody"
+      },
+      "CustomForm": {
+        "kind": "column",
+        "expr": "customform",
+        "derived": true
+      },
+      "DeferredRevenue": {
+        "kind": "column",
+        "expr": "deferredrevenue",
+        "derived": true
+      },
+      "Department": {
+        "kind": "mainlineRef",
+        "column": "department",
+        "note": "best-effort mapping from NetSuite docs; not verified against SOAP output",
+        "optional": true
+      },
+      "DiscountItem": {
+        "kind": "column",
+        "expr": "discountitem",
+        "derived": true
+      },
+      "DiscountRate": {
+        "kind": "column",
+        "expr": "discountrate",
+        "derived": true
+      },
+      "DiscountTotal": {
+        "kind": "column",
+        "expr": "discounttotal",
+        "derived": true
+      },
+      "Email": {
+        "kind": "column",
+        "expr": "email",
+        "derived": true
+      },
+      "Entity": {
+        "kind": "ref",
+        "column": "entity"
+      },
+      "EntityTaxRegNum": {
+        "kind": "column",
+        "expr": "entitytaxregnum",
+        "derived": true
+      },
+      "EstGrossProfit": {
+        "kind": "column",
+        "expr": "estgrossprofit",
+        "derived": true
+      },
+      "EstGrossProfitPercent": {
+        "kind": "column",
+        "expr": "estgrossprofitpercent",
+        "derived": true
+      },
+      "ExchangeRate": {
+        "kind": "column",
+        "expr": "exchangerate",
+        "derived": true
+      },
+      "ExcludeCommission": {
+        "kind": "column",
+        "expr": "excludecommission",
+        "derived": true,
+        "valueMap": "booleanString"
+      },
+      "ExternalId": {
+        "kind": "column",
+        "expr": "externalid",
+        "derived": true
+      },
+      "Fax": {
+        "kind": "column",
+        "expr": "fax",
+        "derived": true
+      },
+      "GiftCert": {
+        "kind": "column",
+        "expr": "giftcert",
+        "derived": true
+      },
+      "GiftCertApplied": {
+        "kind": "column",
+        "expr": "giftcertapplied",
+        "derived": true
+      },
+      "GiftCertAvailable": {
+        "kind": "column",
+        "expr": "giftcertavailable",
+        "derived": true
+      },
+      "GiftCertTotal": {
+        "kind": "column",
+        "expr": "giftcerttotal",
+        "derived": true
+      },
+      "HandlingCost": {
+        "kind": "column",
+        "expr": "handlingcost",
+        "derived": true
+      },
+      "HandlingTax1Rate": {
+        "kind": "column",
+        "expr": "handlingtax1rate",
+        "derived": true
+      },
+      "HandlingTax2Rate": {
+        "kind": "column",
+        "expr": "handlingtax2rate",
+        "derived": true
+      },
+      "HandlingTaxCode": {
+        "kind": "column",
+        "expr": "handlingtaxcode",
+        "derived": true
+      },
+      "IsMultiShipTo": {
+        "kind": "column",
+        "expr": "ismultishipto",
+        "derived": true,
+        "valueMap": "booleanString"
+      },
+      "IsTaxable": {
+        "kind": "column",
+        "expr": "istaxable",
+        "derived": true,
+        "valueMap": "booleanString"
+      },
+      "ItemList": {
+        "kind": "transactionLines",
+        "wrapper": "item"
+      },
+      "Job": {
+        "kind": "ref",
+        "column": "job"
+      },
+      "LastModifiedDate": {
+        "kind": "column",
+        "expr": "lastmodifieddate",
+        "derived": true
+      },
+      "LeadSource": {
+        "kind": "column",
+        "expr": "leadsource",
+        "derived": true
+      },
+      "Location": {
+        "kind": "ref",
+        "column": "location"
+      },
+      "Memo": {
+        "kind": "column",
+        "expr": "memo",
+        "derived": true
+      },
+      "Message": {
+        "kind": "column",
+        "expr": "message",
+        "derived": true
+      },
+      "MessageSel": {
+        "kind": "column",
+        "expr": "messagesel",
+        "derived": true
+      },
+      "Nexus": {
+        "kind": "column",
+        "expr": "nexus",
+        "derived": true
+      },
+      "NullFieldList": {
+        "kind": "unsupported",
+        "reason": "sublist not mapped"
+      },
+      "OnCreditHold": {
+        "kind": "column",
+        "expr": "oncredithold",
+        "derived": true
+      },
+      "OtherRefNum": {
+        "kind": "column",
+        "expr": "otherrefnum",
+        "derived": true
+      },
+      "Partner": {
+        "kind": "ref",
+        "column": "partner"
+      },
+      "PartnersList": {
+        "kind": "unsupported",
+        "reason": "sublist not mapped"
+      },
+      "PostingPeriod": {
+        "kind": "ref",
+        "column": "postingperiod"
+      },
+      "PromoCode": {
+        "kind": "column",
+        "expr": "promocode",
+        "derived": true
+      },
+      "RecognizedRevenue": {
+        "kind": "column",
+        "expr": "recognizedrevenue",
+        "derived": true
+      },
+      "RevRecOnRevCommitment": {
+        "kind": "column",
+        "expr": "revreconrevcommitment",
+        "derived": true
+      },
+      "RevenueStatus": {
+        "kind": "column",
+        "expr": "revenuestatus",
+        "derived": true
+      },
+      "SalesEffectiveDate": {
+        "kind": "column",
+        "expr": "saleseffectivedate",
+        "derived": true
+      },
+      "SalesGroup": {
+        "kind": "column",
+        "expr": "salesgroup",
+        "derived": true
+      },
+      "SalesRep": {
+        "kind": "ref",
+        "column": "employee",
+        "note": "best-effort mapping from NetSuite docs; not verified against SOAP output",
+        "optional": true
+      },
+      "SalesTeamList": {
+        "kind": "unsupported",
+        "reason": "sublist not mapped"
+      },
+      "ShipMethod": {
+        "kind": "column",
+        "expr": "shipmethod",
+        "derived": true
+      },
+      "ShippingCost": {
+        "kind": "column",
+        "expr": "shippingcost",
+        "derived": true
+      },
+      "ShippingTax1Rate": {
+        "kind": "column",
+        "expr": "shippingtax1rate",
+        "derived": true
+      },
+      "ShippingTax2Rate": {
+        "kind": "column",
+        "expr": "shippingtax2rate",
+        "derived": true
+      },
+      "ShippingTaxCode": {
+        "kind": "column",
+        "expr": "shippingtaxcode",
+        "derived": true
+      },
+      "Source": {
+        "kind": "column",
+        "expr": "source",
+        "derived": true
+      },
+      "Status": {
+        "kind": "column",
+        "expr": "status",
+        "derived": true,
+        "display": true,
+        "stripPrefix": true
+      },
+      "SubTotal": {
+        "kind": "column",
+        "expr": "subtotal",
+        "derived": true
+      },
+      "Subsidiary": {
+        "kind": "ref",
+        "column": "subsidiary"
+      },
+      "SubsidiaryTaxRegNum": {
+        "kind": "column",
+        "expr": "subsidiarytaxregnum",
+        "derived": true
+      },
+      "SyncPartnerTeams": {
+        "kind": "column",
+        "expr": "syncpartnerteams",
+        "derived": true
+      },
+      "SyncSalesTeams": {
+        "kind": "column",
+        "expr": "syncsalesteams",
+        "derived": true
+      },
+      "Tax2Total": {
+        "kind": "column",
+        "expr": "tax2total",
+        "derived": true
+      },
+      "TaxDetailsList": {
+        "kind": "unsupported",
+        "reason": "sublist not mapped"
+      },
+      "TaxDetailsOverride": {
+        "kind": "column",
+        "expr": "taxdetailsoverride",
+        "derived": true
+      },
+      "TaxItem": {
+        "kind": "column",
+        "expr": "taxitem",
+        "derived": true
+      },
+      "TaxPointDate": {
+        "kind": "column",
+        "expr": "taxpointdate",
+        "derived": true
+      },
+      "TaxRate": {
+        "kind": "column",
+        "expr": "taxrate",
+        "derived": true
+      },
+      "TaxRegOverride": {
+        "kind": "column",
+        "expr": "taxregoverride",
+        "derived": true
+      },
+      "TaxTotal": {
+        "kind": "column",
+        "expr": "taxtotal",
+        "derived": true
+      },
+      "ToBeEmailed": {
+        "kind": "column",
+        "expr": "tobeemailed",
+        "derived": true,
+        "valueMap": "booleanString"
+      },
+      "ToBeFaxed": {
+        "kind": "column",
+        "expr": "tobefaxed",
+        "derived": true,
+        "valueMap": "booleanString"
+      },
+      "ToBePrinted": {
+        "kind": "column",
+        "expr": "tobeprinted",
+        "derived": true,
+        "valueMap": "booleanString"
+      },
+      "Total": {
+        "kind": "column",
+        "expr": "total",
+        "derived": true
+      },
+      "TotalCostEstimate": {
+        "kind": "column",
+        "expr": "totalcostestimate",
+        "derived": true
+      },
+      "TranDate": {
+        "kind": "column",
+        "expr": "trandate",
+        "derived": true
+      },
+      "TranId": {
+        "kind": "column",
+        "expr": "tranid",
+        "derived": true
+      },
+      "TranIsVsoeBundle": {
+        "kind": "column",
+        "expr": "tranisvsoebundle",
+        "derived": true
+      },
+      "Unapplied": {
+        "kind": "column",
+        "expr": "unapplied",
+        "derived": true
+      },
+      "VatRegNum": {
+        "kind": "column",
+        "expr": "vatregnum",
+        "derived": true
+      },
+      "VsoeAutoCalc": {
+        "kind": "column",
+        "expr": "vsoeautocalc",
+        "derived": true
       }
-    },
-    "unsupported": [
-      "Class",
-      "Department",
-      "SalesRep"
-    ],
-    "verified": false
+    }
   },
   "PurchaseOrder": {
     "table": "transaction",
+    "recordType": "purchaseOrder",
     "alias": "t",
     "keyColumn": "id",
     "replication": "lastmodifieddate",
     "where": [
       "t.recordtype = 'purchaseorder'"
     ],
-    "columns": {
-      "DateCreated": "createddate"
-    },
-    "refs": {
-      "Department": {
-        "column": "department",
-        "table": "department",
-        "nameColumn": "name"
+    "fields": {
+      "Id": {
+        "kind": "column",
+        "expr": "id"
+      },
+      "AccountingBookDetailList": {
+        "kind": "unsupported",
+        "reason": "sublist not mapped"
+      },
+      "ApprovalStatus": {
+        "kind": "column",
+        "expr": "approvalstatus",
+        "derived": true
+      },
+      "AvailableVendorCredit": {
+        "kind": "column",
+        "expr": "availablevendorcredit",
+        "derived": true
+      },
+      "BillAddressList": {
+        "kind": "unsupported",
+        "reason": "sublist not mapped"
+      },
+      "BillingAddress": {
+        "kind": "column",
+        "expr": "billingaddress",
+        "derived": true
       },
       "Class": {
+        "kind": "mainlineRef",
         "column": "class",
-        "table": "classification",
-        "nameColumn": "name"
+        "note": "best-effort mapping from NetSuite docs; not verified against SOAP output",
+        "optional": true
+      },
+      "CreatedDate": {
+        "kind": "column",
+        "expr": "createddate",
+        "derived": true
+      },
+      "CreatedFrom": {
+        "kind": "column",
+        "expr": "createdfrom",
+        "derived": true
       },
       "Currency": {
-        "column": "currency",
-        "table": "currency",
-        "nameColumn": "name"
+        "kind": "ref",
+        "column": "currency"
       },
-      "Entity": {
-        "column": "entity",
-        "table": "entity",
-        "nameColumn": "altname"
-      },
-      "Employee": {
-        "column": "employee",
-        "table": "entity",
-        "nameColumn": "altname"
-      },
-      "Location": {
-        "column": "location",
-        "table": "location",
-        "nameColumn": "name"
-      },
-      "Subsidiary": {
-        "column": "subsidiary",
-        "table": "subsidiary",
-        "nameColumn": "name"
-      }
-    },
-    "sublists": {
-      "ItemList": {
-        "kind": "transactionLines",
-        "wrapper": "item"
-      },
-      "ExpenseList": {
-        "kind": "unsupported"
+      "CurrencyName": {
+        "kind": "column",
+        "expr": "currencyname",
+        "derived": true
       },
       "CustomFieldList": {
         "kind": "customFields",
         "prefix": "custbody"
+      },
+      "CustomForm": {
+        "kind": "column",
+        "expr": "customform",
+        "derived": true
+      },
+      "Department": {
+        "kind": "mainlineRef",
+        "column": "department",
+        "note": "best-effort mapping from NetSuite docs; not verified against SOAP output",
+        "optional": true
+      },
+      "DueDate": {
+        "kind": "column",
+        "expr": "duedate",
+        "derived": true
+      },
+      "Email": {
+        "kind": "column",
+        "expr": "email",
+        "derived": true
+      },
+      "Employee": {
+        "kind": "ref",
+        "column": "employee"
+      },
+      "Entity": {
+        "kind": "ref",
+        "column": "entity"
+      },
+      "EntityTaxRegNum": {
+        "kind": "column",
+        "expr": "entitytaxregnum",
+        "derived": true
+      },
+      "ExchangeRate": {
+        "kind": "column",
+        "expr": "exchangerate",
+        "derived": true
+      },
+      "ExpenseList": {
+        "kind": "unsupported"
+      },
+      "ExternalId": {
+        "kind": "column",
+        "expr": "externalid",
+        "derived": true
+      },
+      "Fax": {
+        "kind": "column",
+        "expr": "fax",
+        "derived": true
+      },
+      "Fob": {
+        "kind": "column",
+        "expr": "fob",
+        "derived": true
+      },
+      "Incoterm": {
+        "kind": "column",
+        "expr": "incoterm",
+        "derived": true
+      },
+      "IntercoStatus": {
+        "kind": "column",
+        "expr": "intercostatus",
+        "derived": true
+      },
+      "IntercoTransaction": {
+        "kind": "column",
+        "expr": "intercotransaction",
+        "derived": true
+      },
+      "ItemList": {
+        "kind": "transactionLines",
+        "wrapper": "item"
+      },
+      "LastModifiedDate": {
+        "kind": "column",
+        "expr": "lastmodifieddate",
+        "derived": true
+      },
+      "LinkedTrackingNumbers": {
+        "kind": "column",
+        "expr": "linkedtrackingnumbers",
+        "derived": true
+      },
+      "Location": {
+        "kind": "ref",
+        "column": "location"
+      },
+      "Memo": {
+        "kind": "column",
+        "expr": "memo",
+        "derived": true
+      },
+      "Message": {
+        "kind": "column",
+        "expr": "message",
+        "derived": true
+      },
+      "NextApprover": {
+        "kind": "column",
+        "expr": "nextapprover",
+        "derived": true
+      },
+      "Nexus": {
+        "kind": "column",
+        "expr": "nexus",
+        "derived": true
+      },
+      "NullFieldList": {
+        "kind": "unsupported",
+        "reason": "sublist not mapped"
+      },
+      "OrderStatus": {
+        "kind": "column",
+        "expr": "orderstatus",
+        "derived": true
+      },
+      "OtherRefNum": {
+        "kind": "column",
+        "expr": "otherrefnum",
+        "derived": true
+      },
+      "PurchaseContract": {
+        "kind": "column",
+        "expr": "purchasecontract",
+        "derived": true
+      },
+      "ShipAddressList": {
+        "kind": "unsupported",
+        "reason": "sublist not mapped"
+      },
+      "ShipDate": {
+        "kind": "column",
+        "expr": "shipdate",
+        "derived": true
+      },
+      "ShipIsResidential": {
+        "kind": "column",
+        "expr": "shipisresidential",
+        "derived": true
+      },
+      "ShipMethod": {
+        "kind": "column",
+        "expr": "shipmethod",
+        "derived": true
+      },
+      "ShipTo": {
+        "kind": "column",
+        "expr": "shipto",
+        "derived": true
+      },
+      "ShippingAddress": {
+        "kind": "column",
+        "expr": "shippingaddress",
+        "derived": true
+      },
+      "Source": {
+        "kind": "column",
+        "expr": "source",
+        "derived": true
+      },
+      "Status": {
+        "kind": "column",
+        "expr": "status",
+        "derived": true,
+        "display": true,
+        "stripPrefix": true
+      },
+      "SubTotal": {
+        "kind": "column",
+        "expr": "subtotal",
+        "derived": true
+      },
+      "Subsidiary": {
+        "kind": "ref",
+        "column": "subsidiary"
+      },
+      "SubsidiaryTaxRegNum": {
+        "kind": "column",
+        "expr": "subsidiarytaxregnum",
+        "derived": true
+      },
+      "SupervisorApproval": {
+        "kind": "column",
+        "expr": "supervisorapproval",
+        "derived": true
+      },
+      "Tax2Total": {
+        "kind": "column",
+        "expr": "tax2total",
+        "derived": true
+      },
+      "TaxDetailsList": {
+        "kind": "unsupported",
+        "reason": "sublist not mapped"
+      },
+      "TaxDetailsOverride": {
+        "kind": "column",
+        "expr": "taxdetailsoverride",
+        "derived": true
+      },
+      "TaxPointDate": {
+        "kind": "column",
+        "expr": "taxpointdate",
+        "derived": true
+      },
+      "TaxRegOverride": {
+        "kind": "column",
+        "expr": "taxregoverride",
+        "derived": true
+      },
+      "TaxTotal": {
+        "kind": "column",
+        "expr": "taxtotal",
+        "derived": true
+      },
+      "Terms": {
+        "kind": "column",
+        "expr": "terms",
+        "derived": true
+      },
+      "ToBeEmailed": {
+        "kind": "column",
+        "expr": "tobeemailed",
+        "derived": true
+      },
+      "ToBeFaxed": {
+        "kind": "column",
+        "expr": "tobefaxed",
+        "derived": true
+      },
+      "ToBePrinted": {
+        "kind": "column",
+        "expr": "tobeprinted",
+        "derived": true
+      },
+      "Total": {
+        "kind": "column",
+        "expr": "total",
+        "derived": true
+      },
+      "TrackingNumbers": {
+        "kind": "column",
+        "expr": "trackingnumbers",
+        "derived": true
+      },
+      "TranDate": {
+        "kind": "column",
+        "expr": "trandate",
+        "derived": true
+      },
+      "TranId": {
+        "kind": "column",
+        "expr": "tranid",
+        "derived": true
+      },
+      "VatRegNum": {
+        "kind": "column",
+        "expr": "vatregnum",
+        "derived": true
       }
-    },
-    "unsupported": [
-      "Class",
-      "Department"
-    ],
-    "verified": false
+    }
   },
   "InventoryItem": {
     "table": "item",
+    "recordType": "inventoryItem",
     "alias": "i",
     "keyColumn": "id",
     "replication": "lastmodifieddate",
     "where": [
       "i.itemtype = 'InvtPart'"
     ],
-    "columns": {
-      "LastModDate": "lastmodifieddate",
-      "Name": "itemid"
-    },
-    "refs": {
-      "Department": {
-        "column": "department",
-        "table": "department",
-        "nameColumn": "name"
-      },
-      "Class": {
-        "column": "class",
-        "table": "classification",
-        "nameColumn": "name"
-      },
-      "Location": {
-        "column": "location",
-        "table": "location",
-        "nameColumn": "name"
-      },
-      "Parent": {
-        "column": "parent",
-        "table": "item",
-        "nameColumn": "itemid"
-      },
-      "Currency": {
-        "column": "currency",
-        "table": "currency",
-        "nameColumn": "name"
-      },
-      "Vendor": {
-        "column": "vendor",
-        "table": "entity",
-        "nameColumn": "altname"
-      }
-    },
-    "sublists": {
-      "CustomFieldList": {
-        "kind": "customFields",
-        "prefix": "custitem"
+    "fields": {
+      "Id": {
+        "kind": "column",
+        "expr": "id"
       },
       "AccountingBookDetailList": {
         "kind": "unsupported"
       },
+      "AlternateDemandSourceItem": {
+        "kind": "column",
+        "expr": "alternatedemandsourceitem",
+        "derived": true
+      },
+      "AssetAccount": {
+        "kind": "column",
+        "expr": "assetaccount",
+        "derived": true
+      },
+      "AutoLeadTime": {
+        "kind": "column",
+        "expr": "autoleadtime",
+        "derived": true
+      },
+      "AutoPreferredStockLevel": {
+        "kind": "column",
+        "expr": "autopreferredstocklevel",
+        "derived": true
+      },
+      "AutoReorderPoint": {
+        "kind": "column",
+        "expr": "autoreorderpoint",
+        "derived": true
+      },
+      "AvailableToPartners": {
+        "kind": "column",
+        "expr": "availabletopartners",
+        "derived": true
+      },
+      "AverageCost": {
+        "kind": "column",
+        "expr": "averagecost",
+        "derived": true
+      },
+      "BackwardConsumptionDays": {
+        "kind": "column",
+        "expr": "backwardconsumptiondays",
+        "derived": true
+      },
+      "BillExchRateVarianceAcct": {
+        "kind": "column",
+        "expr": "billexchratevarianceacct",
+        "derived": true
+      },
+      "BillingSchedule": {
+        "kind": "column",
+        "expr": "billingschedule",
+        "derived": true
+      },
+      "BillPriceVarianceAcct": {
+        "kind": "column",
+        "expr": "billpricevarianceacct",
+        "derived": true
+      },
+      "BillQtyVarianceAcct": {
+        "kind": "column",
+        "expr": "billqtyvarianceacct",
+        "derived": true
+      },
       "BinNumberList": {
         "kind": "unsupported"
+      },
+      "Class": {
+        "kind": "ref",
+        "column": "class"
+      },
+      "CogsAccount": {
+        "kind": "column",
+        "expr": "cogsaccount",
+        "derived": true
+      },
+      "ConsumptionUnit": {
+        "kind": "column",
+        "expr": "consumptionunit",
+        "derived": true
+      },
+      "ContingentRevenueHandling": {
+        "kind": "column",
+        "expr": "contingentrevenuehandling",
+        "derived": true
+      },
+      "ConversionRate": {
+        "kind": "column",
+        "expr": "conversionrate",
+        "derived": true
+      },
+      "CopyDescription": {
+        "kind": "column",
+        "expr": "copydescription",
+        "derived": true
+      },
+      "Cost": {
+        "kind": "column",
+        "expr": "cost",
+        "derived": true
+      },
+      "CostCategory": {
+        "kind": "column",
+        "expr": "costcategory",
+        "derived": true
+      },
+      "CostEstimate": {
+        "kind": "column",
+        "expr": "costestimate",
+        "derived": true
+      },
+      "CostEstimateType": {
+        "kind": "column",
+        "expr": "costestimatetype",
+        "derived": true
+      },
+      "CostEstimateUnits": {
+        "kind": "column",
+        "expr": "costestimateunits",
+        "derived": true
+      },
+      "CostingMethod": {
+        "kind": "column",
+        "expr": "costingmethod",
+        "derived": true
+      },
+      "CostingMethodDisplay": {
+        "kind": "column",
+        "expr": "costingmethoddisplay",
+        "derived": true
+      },
+      "CostUnits": {
+        "kind": "column",
+        "expr": "costunits",
+        "derived": true
+      },
+      "CountryOfManufacture": {
+        "kind": "column",
+        "expr": "countryofmanufacture",
+        "derived": true
+      },
+      "CreatedDate": {
+        "kind": "column",
+        "expr": "createddate",
+        "derived": true
+      },
+      "CreateRevenuePlansOn": {
+        "kind": "column",
+        "expr": "createrevenueplanson",
+        "derived": true
+      },
+      "Currency": {
+        "kind": "ref",
+        "column": "currency",
+        "table": "currency",
+        "nameColumn": "name",
+        "optional": true
+      },
+      "CustomFieldList": {
+        "kind": "customFields",
+        "prefix": "custitem"
+      },
+      "CustomForm": {
+        "kind": "column",
+        "expr": "customform",
+        "derived": true
+      },
+      "DateConvertedToInv": {
+        "kind": "column",
+        "expr": "dateconvertedtoinv",
+        "derived": true
+      },
+      "DefaultItemShipMethod": {
+        "kind": "column",
+        "expr": "defaultitemshipmethod",
+        "derived": true
+      },
+      "DefaultReturnCost": {
+        "kind": "column",
+        "expr": "defaultreturncost",
+        "derived": true
+      },
+      "DeferredRevenueAccount": {
+        "kind": "column",
+        "expr": "deferredrevenueaccount",
+        "derived": true
+      },
+      "DeferRevRec": {
+        "kind": "column",
+        "expr": "deferrevrec",
+        "derived": true
+      },
+      "DemandModifier": {
+        "kind": "column",
+        "expr": "demandmodifier",
+        "derived": true
+      },
+      "DemandSource": {
+        "kind": "column",
+        "expr": "demandsource",
+        "derived": true
+      },
+      "DemandTimeFence": {
+        "kind": "column",
+        "expr": "demandtimefence",
+        "derived": true
+      },
+      "Department": {
+        "kind": "ref",
+        "column": "department"
+      },
+      "DirectRevenuePosting": {
+        "kind": "column",
+        "expr": "directrevenueposting",
+        "derived": true
+      },
+      "DisplayName": {
+        "kind": "column",
+        "expr": "displayname",
+        "derived": true
+      },
+      "DistributionCategory": {
+        "kind": "column",
+        "expr": "distributioncategory",
+        "derived": true
+      },
+      "DistributionNetwork": {
+        "kind": "column",
+        "expr": "distributionnetwork",
+        "derived": true
+      },
+      "DontShowPrice": {
+        "kind": "column",
+        "expr": "dontshowprice",
+        "derived": true
+      },
+      "DropshipExpenseAccount": {
+        "kind": "column",
+        "expr": "dropshipexpenseaccount",
+        "derived": true
+      },
+      "EnableCatchWeight": {
+        "kind": "column",
+        "expr": "enablecatchweight",
+        "derived": true
+      },
+      "EnforceMinQtyInternally": {
+        "kind": "column",
+        "expr": "enforceminqtyinternally",
+        "derived": true
+      },
+      "ExcludeFromSitemap": {
+        "kind": "column",
+        "expr": "excludefromsitemap",
+        "derived": true
+      },
+      "ExpenseAccount": {
+        "kind": "column",
+        "expr": "expenseaccount",
+        "derived": true
+      },
+      "FeaturedDescription": {
+        "kind": "column",
+        "expr": "featureddescription",
+        "derived": true
+      },
+      "FixedLotSize": {
+        "kind": "column",
+        "expr": "fixedlotsize",
+        "derived": true
+      },
+      "ForwardConsumptionDays": {
+        "kind": "column",
+        "expr": "forwardconsumptiondays",
+        "derived": true
+      },
+      "FraudRisk": {
+        "kind": "column",
+        "expr": "fraudrisk",
+        "derived": true
+      },
+      "FutureHorizon": {
+        "kind": "column",
+        "expr": "futurehorizon",
+        "derived": true
+      },
+      "GainLossAccount": {
+        "kind": "column",
+        "expr": "gainlossaccount",
+        "derived": true
+      },
+      "HandlingCost": {
+        "kind": "column",
+        "expr": "handlingcost",
+        "derived": true
+      },
+      "HandlingCostUnits": {
+        "kind": "column",
+        "expr": "handlingcostunits",
+        "derived": true
+      },
+      "HazmatHazardClass": {
+        "kind": "column",
+        "expr": "hazmathazardclass",
+        "derived": true
+      },
+      "HazmatId": {
+        "kind": "column",
+        "expr": "hazmatid",
+        "derived": true
+      },
+      "HazmatItemUnits": {
+        "kind": "column",
+        "expr": "hazmatitemunits",
+        "derived": true
+      },
+      "HazmatItemUnitsQty": {
+        "kind": "column",
+        "expr": "hazmatitemunitsqty",
+        "derived": true
+      },
+      "HazmatPackingGroup": {
+        "kind": "column",
+        "expr": "hazmatpackinggroup",
+        "derived": true
+      },
+      "HazmatShippingName": {
+        "kind": "column",
+        "expr": "hazmatshippingname",
+        "derived": true
       },
       "HierarchyVersionsList": {
         "kind": "unsupported"
       },
+      "IncludeChildren": {
+        "kind": "column",
+        "expr": "includechildren",
+        "derived": true
+      },
+      "IncomeAccount": {
+        "kind": "column",
+        "expr": "incomeaccount",
+        "derived": true
+      },
+      "IntercoCogsAccount": {
+        "kind": "column",
+        "expr": "intercocogsaccount",
+        "derived": true
+      },
+      "IntercoDefRevAccount": {
+        "kind": "column",
+        "expr": "intercodefrevaccount",
+        "derived": true
+      },
+      "IntercoIncomeAccount": {
+        "kind": "column",
+        "expr": "intercoincomeaccount",
+        "derived": true
+      },
+      "InvtClassification": {
+        "kind": "column",
+        "expr": "invtclassification",
+        "derived": true
+      },
+      "InvtCountInterval": {
+        "kind": "column",
+        "expr": "invtcountinterval",
+        "derived": true
+      },
+      "IsDonationItem": {
+        "kind": "column",
+        "expr": "isdonationitem",
+        "derived": true
+      },
+      "IsDropShipItem": {
+        "kind": "column",
+        "expr": "isdropshipitem",
+        "derived": true
+      },
+      "IsGcoCompliant": {
+        "kind": "column",
+        "expr": "isgcocompliant",
+        "derived": true
+      },
+      "IsHazmatItem": {
+        "kind": "column",
+        "expr": "ishazmatitem",
+        "derived": true
+      },
+      "IsInactive": {
+        "kind": "column",
+        "expr": "isinactive",
+        "derived": true
+      },
+      "IsOnline": {
+        "kind": "column",
+        "expr": "isonline",
+        "derived": true
+      },
+      "IsSpecialOrderItem": {
+        "kind": "column",
+        "expr": "isspecialorderitem",
+        "derived": true
+      },
+      "IsStorePickupAllowed": {
+        "kind": "column",
+        "expr": "isstorepickupallowed",
+        "derived": true
+      },
+      "IssueProduct": {
+        "kind": "column",
+        "expr": "issueproduct",
+        "derived": true
+      },
+      "IsTaxable": {
+        "kind": "column",
+        "expr": "istaxable",
+        "derived": true
+      },
+      "ItemCarrier": {
+        "kind": "column",
+        "expr": "itemcarrier",
+        "derived": true
+      },
+      "ItemId": {
+        "kind": "column",
+        "expr": "itemid",
+        "derived": true
+      },
       "ItemOptionsList": {
         "kind": "unsupported"
+      },
+      "ItemRevenueCategory": {
+        "kind": "column",
+        "expr": "itemrevenuecategory",
+        "derived": true
       },
       "ItemShipMethodList": {
         "kind": "unsupported"
@@ -836,32 +3071,731 @@
       "ItemVendorList": {
         "kind": "unsupported"
       },
+      "LastInvtCountDate": {
+        "kind": "column",
+        "expr": "lastinvtcountdate",
+        "derived": true
+      },
+      "LastModDate": {
+        "kind": "column",
+        "expr": "lastmodifieddate"
+      },
+      "LastPurchasePrice": {
+        "kind": "column",
+        "expr": "lastpurchaseprice",
+        "derived": true
+      },
+      "LeadTime": {
+        "kind": "column",
+        "expr": "leadtime",
+        "derived": true
+      },
+      "Location": {
+        "kind": "ref",
+        "column": "location"
+      },
       "LocationsList": {
         "kind": "unsupported"
+      },
+      "LowerWarningLimit": {
+        "kind": "column",
+        "expr": "lowerwarninglimit",
+        "derived": true
+      },
+      "Manufacturer": {
+        "kind": "column",
+        "expr": "manufacturer",
+        "derived": true
+      },
+      "ManufacturerAddr1": {
+        "kind": "column",
+        "expr": "manufactureraddr1",
+        "derived": true
+      },
+      "ManufacturerCity": {
+        "kind": "column",
+        "expr": "manufacturercity",
+        "derived": true
+      },
+      "ManufacturerState": {
+        "kind": "column",
+        "expr": "manufacturerstate",
+        "derived": true
+      },
+      "ManufacturerTariff": {
+        "kind": "column",
+        "expr": "manufacturertariff",
+        "derived": true
+      },
+      "ManufacturerTaxId": {
+        "kind": "column",
+        "expr": "manufacturertaxid",
+        "derived": true
+      },
+      "ManufacturerZip": {
+        "kind": "column",
+        "expr": "manufacturerzip",
+        "derived": true
+      },
+      "MatchBillToReceipt": {
+        "kind": "column",
+        "expr": "matchbilltoreceipt",
+        "derived": true
+      },
+      "MatrixItemNameTemplate": {
+        "kind": "column",
+        "expr": "matrixitemnametemplate",
+        "derived": true
       },
       "MatrixOptionList": {
         "kind": "unsupported"
       },
+      "MatrixType": {
+        "kind": "column",
+        "expr": "matrixtype",
+        "derived": true
+      },
+      "MaxDonationAmount": {
+        "kind": "column",
+        "expr": "maxdonationamount",
+        "derived": true
+      },
+      "MaximumQuantity": {
+        "kind": "column",
+        "expr": "maximumquantity",
+        "derived": true
+      },
+      "MetaTagHtml": {
+        "kind": "column",
+        "expr": "metataghtml",
+        "derived": true
+      },
+      "MinimumQuantity": {
+        "kind": "column",
+        "expr": "minimumquantity",
+        "derived": true
+      },
+      "MinimumQuantityUnits": {
+        "kind": "column",
+        "expr": "minimumquantityunits",
+        "derived": true
+      },
+      "Mpn": {
+        "kind": "column",
+        "expr": "mpn",
+        "derived": true
+      },
+      "MultManufactureAddr": {
+        "kind": "column",
+        "expr": "multmanufactureaddr",
+        "derived": true
+      },
+      "NexTagCategory": {
+        "kind": "column",
+        "expr": "nextagcategory",
+        "derived": true
+      },
+      "NextInvtCountDate": {
+        "kind": "column",
+        "expr": "nextinvtcountdate",
+        "derived": true
+      },
+      "NoPriceMessage": {
+        "kind": "column",
+        "expr": "nopricemessage",
+        "derived": true
+      },
+      "OfferSupport": {
+        "kind": "column",
+        "expr": "offersupport",
+        "derived": true
+      },
+      "OnHandValueMli": {
+        "kind": "column",
+        "expr": "onhandvaluemli",
+        "derived": true
+      },
+      "OnSpecial": {
+        "kind": "column",
+        "expr": "onspecial",
+        "derived": true
+      },
+      "OriginalItemSubtype": {
+        "kind": "column",
+        "expr": "originalitemsubtype",
+        "derived": true
+      },
+      "OriginalItemType": {
+        "kind": "column",
+        "expr": "originalitemtype",
+        "derived": true
+      },
+      "OutOfStockBehavior": {
+        "kind": "column",
+        "expr": "outofstockbehavior",
+        "derived": true
+      },
+      "OutOfStockMessage": {
+        "kind": "column",
+        "expr": "outofstockmessage",
+        "derived": true
+      },
+      "OverallQuantityPricingType": {
+        "kind": "column",
+        "expr": "overallquantitypricingtype",
+        "derived": true
+      },
+      "PageTitle": {
+        "kind": "column",
+        "expr": "pagetitle",
+        "derived": true
+      },
+      "Parent": {
+        "kind": "ref",
+        "column": "parent"
+      },
+      "PeriodicLotSizeDays": {
+        "kind": "column",
+        "expr": "periodiclotsizedays",
+        "derived": true
+      },
+      "PeriodicLotSizeType": {
+        "kind": "column",
+        "expr": "periodiclotsizetype",
+        "derived": true
+      },
+      "PlanningItemCategory": {
+        "kind": "column",
+        "expr": "planningitemcategory",
+        "derived": true
+      },
+      "PreferenceCriterion": {
+        "kind": "column",
+        "expr": "preferencecriterion",
+        "derived": true
+      },
+      "PreferredLocation": {
+        "kind": "column",
+        "expr": "preferredlocation",
+        "derived": true
+      },
+      "PreferredStockLevel": {
+        "kind": "column",
+        "expr": "preferredstocklevel",
+        "derived": true
+      },
+      "PreferredStockLevelDays": {
+        "kind": "column",
+        "expr": "preferredstockleveldays",
+        "derived": true
+      },
+      "PreferredStockLevelUnits": {
+        "kind": "column",
+        "expr": "preferredstocklevelunits",
+        "derived": true
+      },
       "PresentationItemList": {
         "kind": "unsupported"
+      },
+      "PricesIncludeTax": {
+        "kind": "column",
+        "expr": "pricesincludetax",
+        "derived": true
+      },
+      "PricingGroup": {
+        "kind": "column",
+        "expr": "pricinggroup",
+        "derived": true
+      },
+      "PricingMatrix": {
+        "kind": "column",
+        "expr": "pricingmatrix",
+        "derived": true
+      },
+      "Producer": {
+        "kind": "column",
+        "expr": "producer",
+        "derived": true
       },
       "ProductFeedList": {
         "kind": "unsupported"
       },
+      "PurchaseDescription": {
+        "kind": "column",
+        "expr": "purchasedescription",
+        "derived": true
+      },
+      "PurchaseOrderAmount": {
+        "kind": "column",
+        "expr": "purchaseorderamount",
+        "derived": true
+      },
+      "PurchaseOrderQuantity": {
+        "kind": "column",
+        "expr": "purchaseorderquantity",
+        "derived": true
+      },
+      "PurchaseOrderQuantityDiff": {
+        "kind": "column",
+        "expr": "purchaseorderquantitydiff",
+        "derived": true
+      },
+      "PurchasePriceVarianceAcct": {
+        "kind": "column",
+        "expr": "purchasepricevarianceacct",
+        "derived": true
+      },
+      "PurchaseTaxCode": {
+        "kind": "column",
+        "expr": "purchasetaxcode",
+        "derived": true
+      },
+      "PurchaseUnit": {
+        "kind": "column",
+        "expr": "purchaseunit",
+        "derived": true
+      },
+      "QuantityAvailable": {
+        "kind": "column",
+        "expr": "quantityavailable",
+        "derived": true
+      },
+      "QuantityAvailableUnits": {
+        "kind": "column",
+        "expr": "quantityavailableunits",
+        "derived": true
+      },
+      "QuantityBackOrdered": {
+        "kind": "column",
+        "expr": "quantitybackordered",
+        "derived": true
+      },
+      "QuantityCommitted": {
+        "kind": "column",
+        "expr": "quantitycommitted",
+        "derived": true
+      },
+      "QuantityCommittedUnits": {
+        "kind": "column",
+        "expr": "quantitycommittedunits",
+        "derived": true
+      },
+      "QuantityOnHand": {
+        "kind": "column",
+        "expr": "quantityonhand",
+        "derived": true
+      },
+      "QuantityOnHandUnits": {
+        "kind": "column",
+        "expr": "quantityonhandunits",
+        "derived": true
+      },
+      "QuantityOnOrder": {
+        "kind": "column",
+        "expr": "quantityonorder",
+        "derived": true
+      },
+      "QuantityOnOrderUnits": {
+        "kind": "column",
+        "expr": "quantityonorderunits",
+        "derived": true
+      },
+      "QuantityPricingSchedule": {
+        "kind": "column",
+        "expr": "quantitypricingschedule",
+        "derived": true
+      },
+      "QuantityReorderUnits": {
+        "kind": "column",
+        "expr": "quantityreorderunits",
+        "derived": true
+      },
+      "Rate": {
+        "kind": "column",
+        "expr": "rate",
+        "derived": true
+      },
+      "ReceiptAmount": {
+        "kind": "column",
+        "expr": "receiptamount",
+        "derived": true
+      },
+      "ReceiptQuantity": {
+        "kind": "column",
+        "expr": "receiptquantity",
+        "derived": true
+      },
+      "ReceiptQuantityDiff": {
+        "kind": "column",
+        "expr": "receiptquantitydiff",
+        "derived": true
+      },
+      "RelatedItemsDescription": {
+        "kind": "column",
+        "expr": "relateditemsdescription",
+        "derived": true
+      },
+      "ReorderMultiple": {
+        "kind": "column",
+        "expr": "reordermultiple",
+        "derived": true
+      },
+      "ReorderPoint": {
+        "kind": "column",
+        "expr": "reorderpoint",
+        "derived": true
+      },
+      "ReorderPointUnits": {
+        "kind": "column",
+        "expr": "reorderpointunits",
+        "derived": true
+      },
+      "RescheduleInDays": {
+        "kind": "column",
+        "expr": "rescheduleindays",
+        "derived": true
+      },
+      "RescheduleOutDays": {
+        "kind": "column",
+        "expr": "rescheduleoutdays",
+        "derived": true
+      },
+      "RevenueAllocationGroup": {
+        "kind": "column",
+        "expr": "revenueallocationgroup",
+        "derived": true
+      },
+      "RevenueRecognitionRule": {
+        "kind": "column",
+        "expr": "revenuerecognitionrule",
+        "derived": true
+      },
+      "RevRecForecastRule": {
+        "kind": "column",
+        "expr": "revrecforecastrule",
+        "derived": true
+      },
+      "RevReclassFXAccount": {
+        "kind": "column",
+        "expr": "revreclassfxaccount",
+        "derived": true
+      },
+      "RevRecSchedule": {
+        "kind": "column",
+        "expr": "revrecschedule",
+        "derived": true
+      },
+      "RoundUpAsComponent": {
+        "kind": "column",
+        "expr": "roundupascomponent",
+        "derived": true
+      },
+      "SafetyStockLevel": {
+        "kind": "column",
+        "expr": "safetystocklevel",
+        "derived": true
+      },
+      "SafetyStockLevelDays": {
+        "kind": "column",
+        "expr": "safetystockleveldays",
+        "derived": true
+      },
+      "SafetyStockLevelUnits": {
+        "kind": "column",
+        "expr": "safetystocklevelunits",
+        "derived": true
+      },
+      "SalesDescription": {
+        "kind": "column",
+        "expr": "salesdescription",
+        "derived": true
+      },
+      "SalesTaxCode": {
+        "kind": "column",
+        "expr": "salestaxcode",
+        "derived": true
+      },
+      "SaleUnit": {
+        "kind": "column",
+        "expr": "saleunit",
+        "derived": true
+      },
+      "ScheduleBCode": {
+        "kind": "column",
+        "expr": "schedulebcode",
+        "derived": true
+      },
+      "ScheduleBNumber": {
+        "kind": "column",
+        "expr": "schedulebnumber",
+        "derived": true
+      },
+      "ScheduleBQuantity": {
+        "kind": "column",
+        "expr": "schedulebquantity",
+        "derived": true
+      },
+      "SearchKeywords": {
+        "kind": "column",
+        "expr": "searchkeywords",
+        "derived": true
+      },
+      "SeasonalDemand": {
+        "kind": "column",
+        "expr": "seasonaldemand",
+        "derived": true
+      },
+      "SecondaryBaseUnit": {
+        "kind": "column",
+        "expr": "secondarybaseunit",
+        "derived": true
+      },
+      "SecondaryConsumptionUnit": {
+        "kind": "column",
+        "expr": "secondaryconsumptionunit",
+        "derived": true
+      },
+      "SecondaryPurchaseUnit": {
+        "kind": "column",
+        "expr": "secondarypurchaseunit",
+        "derived": true
+      },
+      "SecondarySaleUnit": {
+        "kind": "column",
+        "expr": "secondarysaleunit",
+        "derived": true
+      },
+      "SecondaryStockUnit": {
+        "kind": "column",
+        "expr": "secondarystockunit",
+        "derived": true
+      },
+      "SecondaryUnitsType": {
+        "kind": "column",
+        "expr": "secondaryunitstype",
+        "derived": true
+      },
+      "ShipIndividually": {
+        "kind": "column",
+        "expr": "shipindividually",
+        "derived": true
+      },
+      "ShipPackage": {
+        "kind": "column",
+        "expr": "shippackage",
+        "derived": true
+      },
+      "ShippingCost": {
+        "kind": "column",
+        "expr": "shippingcost",
+        "derived": true
+      },
+      "ShippingCostUnits": {
+        "kind": "column",
+        "expr": "shippingcostunits",
+        "derived": true
+      },
+      "ShoppingDotComCategory": {
+        "kind": "column",
+        "expr": "shoppingdotcomcategory",
+        "derived": true
+      },
+      "ShopzillaCategoryId": {
+        "kind": "column",
+        "expr": "shopzillacategoryid",
+        "derived": true
+      },
+      "ShowDefaultDonationAmount": {
+        "kind": "column",
+        "expr": "showdefaultdonationamount",
+        "derived": true
+      },
       "SiteCategoryList": {
         "kind": "unsupported"
+      },
+      "SitemapPriority": {
+        "kind": "column",
+        "expr": "sitemappriority",
+        "derived": true
+      },
+      "SoftDescriptor": {
+        "kind": "column",
+        "expr": "softdescriptor",
+        "derived": true
+      },
+      "SpecialsDescription": {
+        "kind": "column",
+        "expr": "specialsdescription",
+        "derived": true
+      },
+      "StockDescription": {
+        "kind": "column",
+        "expr": "stockdescription",
+        "derived": true
+      },
+      "StockUnit": {
+        "kind": "column",
+        "expr": "stockunit",
+        "derived": true
+      },
+      "StoreDescription": {
+        "kind": "column",
+        "expr": "storedescription",
+        "derived": true
+      },
+      "StoreDetailedDescription": {
+        "kind": "column",
+        "expr": "storedetaileddescription",
+        "derived": true
+      },
+      "StoreDisplayImage": {
+        "kind": "column",
+        "expr": "storedisplayimage",
+        "derived": true
+      },
+      "StoreDisplayName": {
+        "kind": "column",
+        "expr": "storedisplayname",
+        "derived": true
+      },
+      "StoreDisplayThumbnail": {
+        "kind": "column",
+        "expr": "storedisplaythumbnail",
+        "derived": true
+      },
+      "StoreItemTemplate": {
+        "kind": "column",
+        "expr": "storeitemtemplate",
+        "derived": true
       },
       "SubsidiaryList": {
         "kind": "unsupported"
       },
+      "SupplyLotSizingMethod": {
+        "kind": "column",
+        "expr": "supplylotsizingmethod",
+        "derived": true
+      },
+      "SupplyReplenishmentMethod": {
+        "kind": "column",
+        "expr": "supplyreplenishmentmethod",
+        "derived": true
+      },
+      "SupplyTimeFence": {
+        "kind": "column",
+        "expr": "supplytimefence",
+        "derived": true
+      },
+      "SupplyType": {
+        "kind": "column",
+        "expr": "supplytype",
+        "derived": true
+      },
+      "TaxSchedule": {
+        "kind": "column",
+        "expr": "taxschedule",
+        "derived": true
+      },
+      "TotalValue": {
+        "kind": "column",
+        "expr": "totalvalue",
+        "derived": true
+      },
+      "TrackLandedCost": {
+        "kind": "column",
+        "expr": "tracklandedcost",
+        "derived": true
+      },
+      "TransferPrice": {
+        "kind": "column",
+        "expr": "transferprice",
+        "derived": true
+      },
       "TranslationsList": {
         "kind": "unsupported"
+      },
+      "UnitsType": {
+        "kind": "column",
+        "expr": "unitstype",
+        "derived": true
+      },
+      "UpcCode": {
+        "kind": "column",
+        "expr": "upccode",
+        "derived": true
+      },
+      "UpperWarningLimit": {
+        "kind": "column",
+        "expr": "upperwarninglimit",
+        "derived": true
+      },
+      "UrlComponent": {
+        "kind": "column",
+        "expr": "urlcomponent",
+        "derived": true
+      },
+      "UseBins": {
+        "kind": "column",
+        "expr": "usebins",
+        "derived": true,
+        "valueMap": "booleanString"
+      },
+      "UseMarginalRates": {
+        "kind": "column",
+        "expr": "usemarginalrates",
+        "derived": true,
+        "valueMap": "booleanString"
+      },
+      "Vendor": {
+        "kind": "ref",
+        "column": "vendor"
+      },
+      "VendorName": {
+        "kind": "column",
+        "expr": "vendorname",
+        "derived": true
+      },
+      "VsoeDeferral": {
+        "kind": "column",
+        "expr": "vsoedeferral",
+        "derived": true
+      },
+      "VsoeDelivered": {
+        "kind": "column",
+        "expr": "vsoedelivered",
+        "derived": true
+      },
+      "VsoePermitDiscount": {
+        "kind": "column",
+        "expr": "vsoepermitdiscount",
+        "derived": true
+      },
+      "VsoePrice": {
+        "kind": "column",
+        "expr": "vsoeprice",
+        "derived": true
+      },
+      "VsoeSopGroup": {
+        "kind": "column",
+        "expr": "vsoesopgroup",
+        "derived": true
+      },
+      "Weight": {
+        "kind": "column",
+        "expr": "weight",
+        "derived": true
+      },
+      "WeightUnit": {
+        "kind": "column",
+        "expr": "weightunit",
+        "derived": true
+      },
+      "WeightUnits": {
+        "kind": "column",
+        "expr": "weightunits",
+        "derived": true
       }
-    },
-    "unsupported": [
-      "Currency"
-    ],
-    "verified": false
+    }
   },
   "Items": {
     "table": "item",
@@ -869,68 +3803,670 @@
     "keyColumn": "id",
     "replication": "lastmodifieddate",
     "where": [],
-    "columns": {
-      "Name": "itemid"
-    },
-    "refs": {
-      "Department": {
-        "column": "department",
-        "table": "department",
-        "nameColumn": "name"
-      },
-      "Class": {
-        "column": "class",
-        "table": "classification",
-        "nameColumn": "name"
-      },
-      "Location": {
-        "column": "location",
-        "table": "location",
-        "nameColumn": "name"
-      },
-      "Parent": {
-        "column": "parent",
-        "table": "item",
-        "nameColumn": "itemid"
-      }
-    },
-    "sublists": {
-      "CustomFieldList": {
-        "kind": "customFields",
-        "prefix": "custitem"
+    "recordTypes": [
+      "inventoryItem",
+      "nonInventorySaleItem",
+      "nonInventoryPurchaseItem",
+      "nonInventoryResaleItem",
+      "serviceSaleItem",
+      "servicePurchaseItem",
+      "serviceResaleItem",
+      "otherChargeSaleItem",
+      "otherChargePurchaseItem",
+      "otherChargeResaleItem",
+      "kitItem",
+      "assemblyItem",
+      "lotNumberedInventoryItem",
+      "serializedInventoryItem",
+      "discountItem",
+      "markupItem",
+      "paymentItem",
+      "subtotalItem",
+      "descriptionItem",
+      "itemGroup",
+      "giftCertificateItem",
+      "downloadItem"
+    ],
+    "fields": {
+      "Id": {
+        "kind": "column",
+        "expr": "id"
       },
       "AccountingBookDetailList": {
         "kind": "unsupported"
       },
+      "AvailableToPartners": {
+        "kind": "column",
+        "expr": "availabletopartners",
+        "derived": true
+      },
+      "BillingSchedule": {
+        "kind": "column",
+        "expr": "billingschedule",
+        "derived": true
+      },
+      "Class": {
+        "kind": "ref",
+        "column": "class"
+      },
+      "ContingentRevenueHandling": {
+        "kind": "column",
+        "expr": "contingentrevenuehandling",
+        "derived": true
+      },
+      "CostCategory": {
+        "kind": "column",
+        "expr": "costcategory",
+        "derived": true
+      },
+      "CostEstimate": {
+        "kind": "column",
+        "expr": "costestimate",
+        "derived": true
+      },
+      "CostEstimateType": {
+        "kind": "column",
+        "expr": "costestimatetype",
+        "derived": true
+      },
+      "CostEstimateUnits": {
+        "kind": "column",
+        "expr": "costestimateunits",
+        "derived": true
+      },
+      "CountryOfManufacture": {
+        "kind": "column",
+        "expr": "countryofmanufacture",
+        "derived": true
+      },
+      "CreateRevenuePlansOn": {
+        "kind": "column",
+        "expr": "createrevenueplanson",
+        "derived": true
+      },
+      "CreatedDate": {
+        "kind": "column",
+        "expr": "createddate",
+        "derived": true
+      },
+      "CustomFieldList": {
+        "kind": "customFields",
+        "prefix": "custitem"
+      },
+      "CustomForm": {
+        "kind": "column",
+        "expr": "customform",
+        "derived": true
+      },
+      "DefaultItemShipMethod": {
+        "kind": "column",
+        "expr": "defaultitemshipmethod",
+        "derived": true
+      },
+      "DeferRevRec": {
+        "kind": "column",
+        "expr": "deferrevrec",
+        "derived": true
+      },
+      "DeferredRevenueAccount": {
+        "kind": "column",
+        "expr": "deferredrevenueaccount",
+        "derived": true
+      },
+      "Department": {
+        "kind": "ref",
+        "column": "department"
+      },
+      "DirectRevenuePosting": {
+        "kind": "column",
+        "expr": "directrevenueposting",
+        "derived": true
+      },
+      "DisplayName": {
+        "kind": "column",
+        "expr": "displayname",
+        "derived": true
+      },
+      "DontShowPrice": {
+        "kind": "column",
+        "expr": "dontshowprice",
+        "derived": true
+      },
+      "EnforceMinQtyInternally": {
+        "kind": "column",
+        "expr": "enforceminqtyinternally",
+        "derived": true
+      },
+      "ExcludeFromSitemap": {
+        "kind": "column",
+        "expr": "excludefromsitemap",
+        "derived": true
+      },
+      "ExternalId": {
+        "kind": "column",
+        "expr": "externalid",
+        "derived": true
+      },
+      "FeaturedDescription": {
+        "kind": "column",
+        "expr": "featureddescription",
+        "derived": true
+      },
+      "HandlingCost": {
+        "kind": "column",
+        "expr": "handlingcost",
+        "derived": true
+      },
+      "HandlingCostUnits": {
+        "kind": "column",
+        "expr": "handlingcostunits",
+        "derived": true
+      },
+      "HazmatHazardClass": {
+        "kind": "column",
+        "expr": "hazmathazardclass",
+        "derived": true
+      },
+      "HazmatId": {
+        "kind": "column",
+        "expr": "hazmatid",
+        "derived": true
+      },
+      "HazmatItemUnits": {
+        "kind": "column",
+        "expr": "hazmatitemunits",
+        "derived": true
+      },
+      "HazmatItemUnitsQty": {
+        "kind": "column",
+        "expr": "hazmatitemunitsqty",
+        "derived": true
+      },
+      "HazmatPackingGroup": {
+        "kind": "column",
+        "expr": "hazmatpackinggroup",
+        "derived": true
+      },
+      "HazmatShippingName": {
+        "kind": "column",
+        "expr": "hazmatshippingname",
+        "derived": true
+      },
+      "IncludeChildren": {
+        "kind": "column",
+        "expr": "includechildren",
+        "derived": true
+      },
+      "IncomeAccount": {
+        "kind": "column",
+        "expr": "incomeaccount",
+        "derived": true
+      },
+      "IsDonationItem": {
+        "kind": "column",
+        "expr": "isdonationitem",
+        "derived": true
+      },
+      "IsFulfillable": {
+        "kind": "column",
+        "expr": "isfulfillable",
+        "derived": true
+      },
+      "IsGcoCompliant": {
+        "kind": "column",
+        "expr": "isgcocompliant",
+        "derived": true
+      },
+      "IsHazmatItem": {
+        "kind": "column",
+        "expr": "ishazmatitem",
+        "derived": true
+      },
+      "IsInactive": {
+        "kind": "column",
+        "expr": "isinactive",
+        "derived": true
+      },
+      "IsOnline": {
+        "kind": "column",
+        "expr": "isonline",
+        "derived": true
+      },
+      "IsTaxable": {
+        "kind": "column",
+        "expr": "istaxable",
+        "derived": true
+      },
+      "IssueProduct": {
+        "kind": "column",
+        "expr": "issueproduct",
+        "derived": true
+      },
+      "ItemCarrier": {
+        "kind": "column",
+        "expr": "itemcarrier",
+        "derived": true
+      },
+      "ItemId": {
+        "kind": "column",
+        "expr": "itemid",
+        "derived": true
+      },
       "ItemOptionsList": {
         "kind": "unsupported"
+      },
+      "ItemRevenueCategory": {
+        "kind": "column",
+        "expr": "itemrevenuecategory",
+        "derived": true
       },
       "ItemShipMethodList": {
         "kind": "unsupported"
       },
+      "LastModifiedDate": {
+        "kind": "column",
+        "expr": "lastmodifieddate",
+        "derived": true
+      },
+      "Location": {
+        "kind": "ref",
+        "column": "location"
+      },
+      "Manufacturer": {
+        "kind": "column",
+        "expr": "manufacturer",
+        "derived": true
+      },
+      "ManufacturerAddr1": {
+        "kind": "column",
+        "expr": "manufactureraddr1",
+        "derived": true
+      },
+      "ManufacturerCity": {
+        "kind": "column",
+        "expr": "manufacturercity",
+        "derived": true
+      },
+      "ManufacturerState": {
+        "kind": "column",
+        "expr": "manufacturerstate",
+        "derived": true
+      },
+      "ManufacturerTariff": {
+        "kind": "column",
+        "expr": "manufacturertariff",
+        "derived": true
+      },
+      "ManufacturerTaxId": {
+        "kind": "column",
+        "expr": "manufacturertaxid",
+        "derived": true
+      },
+      "ManufacturerZip": {
+        "kind": "column",
+        "expr": "manufacturerzip",
+        "derived": true
+      },
+      "MatrixItemNameTemplate": {
+        "kind": "column",
+        "expr": "matrixitemnametemplate",
+        "derived": true
+      },
       "MatrixOptionList": {
         "kind": "unsupported"
+      },
+      "MatrixType": {
+        "kind": "column",
+        "expr": "matrixtype",
+        "derived": true
+      },
+      "MaxDonationAmount": {
+        "kind": "column",
+        "expr": "maxdonationamount",
+        "derived": true
+      },
+      "MaximumQuantity": {
+        "kind": "column",
+        "expr": "maximumquantity",
+        "derived": true
+      },
+      "MetaTagHtml": {
+        "kind": "column",
+        "expr": "metataghtml",
+        "derived": true
+      },
+      "MinimumQuantity": {
+        "kind": "column",
+        "expr": "minimumquantity",
+        "derived": true
+      },
+      "MinimumQuantityUnits": {
+        "kind": "column",
+        "expr": "minimumquantityunits",
+        "derived": true
+      },
+      "Mpn": {
+        "kind": "column",
+        "expr": "mpn",
+        "derived": true
+      },
+      "MultManufactureAddr": {
+        "kind": "column",
+        "expr": "multmanufactureaddr",
+        "derived": true
+      },
+      "NexTagCategory": {
+        "kind": "column",
+        "expr": "nextagcategory",
+        "derived": true
+      },
+      "NoPriceMessage": {
+        "kind": "column",
+        "expr": "nopricemessage",
+        "derived": true
       },
       "NullFieldList": {
         "kind": "unsupported"
       },
+      "OfferSupport": {
+        "kind": "column",
+        "expr": "offersupport",
+        "derived": true
+      },
+      "OnSpecial": {
+        "kind": "column",
+        "expr": "onspecial",
+        "derived": true
+      },
+      "OutOfStockBehavior": {
+        "kind": "column",
+        "expr": "outofstockbehavior",
+        "derived": true
+      },
+      "OutOfStockMessage": {
+        "kind": "column",
+        "expr": "outofstockmessage",
+        "derived": true
+      },
+      "OverallQuantityPricingType": {
+        "kind": "column",
+        "expr": "overallquantitypricingtype",
+        "derived": true
+      },
+      "PageTitle": {
+        "kind": "column",
+        "expr": "pagetitle",
+        "derived": true
+      },
+      "Parent": {
+        "kind": "ref",
+        "column": "parent"
+      },
+      "PreferenceCriterion": {
+        "kind": "column",
+        "expr": "preferencecriterion",
+        "derived": true
+      },
       "PresentationItemList": {
         "kind": "unsupported"
+      },
+      "PricesIncludeTax": {
+        "kind": "column",
+        "expr": "pricesincludetax",
+        "derived": true
+      },
+      "PricingGroup": {
+        "kind": "column",
+        "expr": "pricinggroup",
+        "derived": true
+      },
+      "PricingMatrix": {
+        "kind": "column",
+        "expr": "pricingmatrix",
+        "derived": true
+      },
+      "Producer": {
+        "kind": "column",
+        "expr": "producer",
+        "derived": true
       },
       "ProductFeedList": {
         "kind": "unsupported"
       },
+      "PurchaseTaxCode": {
+        "kind": "column",
+        "expr": "purchasetaxcode",
+        "derived": true
+      },
+      "QuantityPricingSchedule": {
+        "kind": "column",
+        "expr": "quantitypricingschedule",
+        "derived": true
+      },
+      "Rate": {
+        "kind": "column",
+        "expr": "rate",
+        "derived": true
+      },
+      "RelatedItemsDescription": {
+        "kind": "column",
+        "expr": "relateditemsdescription",
+        "derived": true
+      },
+      "RevRecForecastRule": {
+        "kind": "column",
+        "expr": "revrecforecastrule",
+        "derived": true
+      },
+      "RevRecSchedule": {
+        "kind": "column",
+        "expr": "revrecschedule",
+        "derived": true
+      },
+      "RevReclassFXAccount": {
+        "kind": "column",
+        "expr": "revreclassfxaccount",
+        "derived": true
+      },
+      "RevenueAllocationGroup": {
+        "kind": "column",
+        "expr": "revenueallocationgroup",
+        "derived": true
+      },
+      "RevenueRecognitionRule": {
+        "kind": "column",
+        "expr": "revenuerecognitionrule",
+        "derived": true
+      },
+      "SaleUnit": {
+        "kind": "column",
+        "expr": "saleunit",
+        "derived": true
+      },
+      "SalesDescription": {
+        "kind": "column",
+        "expr": "salesdescription",
+        "derived": true
+      },
+      "SalesTaxCode": {
+        "kind": "column",
+        "expr": "salestaxcode",
+        "derived": true
+      },
+      "ScheduleBCode": {
+        "kind": "column",
+        "expr": "schedulebcode",
+        "derived": true
+      },
+      "ScheduleBNumber": {
+        "kind": "column",
+        "expr": "schedulebnumber",
+        "derived": true
+      },
+      "ScheduleBQuantity": {
+        "kind": "column",
+        "expr": "schedulebquantity",
+        "derived": true
+      },
+      "SearchKeywords": {
+        "kind": "column",
+        "expr": "searchkeywords",
+        "derived": true
+      },
+      "ShipIndividually": {
+        "kind": "column",
+        "expr": "shipindividually",
+        "derived": true
+      },
+      "ShipPackage": {
+        "kind": "column",
+        "expr": "shippackage",
+        "derived": true
+      },
+      "ShippingCost": {
+        "kind": "column",
+        "expr": "shippingcost",
+        "derived": true
+      },
+      "ShippingCostUnits": {
+        "kind": "column",
+        "expr": "shippingcostunits",
+        "derived": true
+      },
+      "ShoppingDotComCategory": {
+        "kind": "column",
+        "expr": "shoppingdotcomcategory",
+        "derived": true
+      },
+      "ShopzillaCategoryId": {
+        "kind": "column",
+        "expr": "shopzillacategoryid",
+        "derived": true
+      },
+      "ShowDefaultDonationAmount": {
+        "kind": "column",
+        "expr": "showdefaultdonationamount",
+        "derived": true
+      },
       "SiteCategoryList": {
         "kind": "unsupported"
+      },
+      "SitemapPriority": {
+        "kind": "column",
+        "expr": "sitemappriority",
+        "derived": true
+      },
+      "SoftDescriptor": {
+        "kind": "column",
+        "expr": "softdescriptor",
+        "derived": true
+      },
+      "SpecialsDescription": {
+        "kind": "column",
+        "expr": "specialsdescription",
+        "derived": true
+      },
+      "StockDescription": {
+        "kind": "column",
+        "expr": "stockdescription",
+        "derived": true
+      },
+      "StoreDescription": {
+        "kind": "column",
+        "expr": "storedescription",
+        "derived": true
+      },
+      "StoreDetailedDescription": {
+        "kind": "column",
+        "expr": "storedetaileddescription",
+        "derived": true
+      },
+      "StoreDisplayImage": {
+        "kind": "column",
+        "expr": "storedisplayimage",
+        "derived": true
+      },
+      "StoreDisplayName": {
+        "kind": "column",
+        "expr": "storedisplayname",
+        "derived": true
+      },
+      "StoreDisplayThumbnail": {
+        "kind": "column",
+        "expr": "storedisplaythumbnail",
+        "derived": true
+      },
+      "StoreItemTemplate": {
+        "kind": "column",
+        "expr": "storeitemtemplate",
+        "derived": true
       },
       "SubsidiaryList": {
         "kind": "unsupported"
       },
+      "TaxSchedule": {
+        "kind": "column",
+        "expr": "taxschedule",
+        "derived": true
+      },
       "TranslationsList": {
         "kind": "unsupported"
+      },
+      "UnitsType": {
+        "kind": "column",
+        "expr": "unitstype",
+        "derived": true
+      },
+      "UpcCode": {
+        "kind": "column",
+        "expr": "upccode",
+        "derived": true
+      },
+      "UrlComponent": {
+        "kind": "column",
+        "expr": "urlcomponent",
+        "derived": true
+      },
+      "UseMarginalRates": {
+        "kind": "column",
+        "expr": "usemarginalrates",
+        "derived": true
+      },
+      "VsoeDeferral": {
+        "kind": "column",
+        "expr": "vsoedeferral",
+        "derived": true
+      },
+      "VsoeDelivered": {
+        "kind": "column",
+        "expr": "vsoedelivered",
+        "derived": true
+      },
+      "VsoePermitDiscount": {
+        "kind": "column",
+        "expr": "vsoepermitdiscount",
+        "derived": true
+      },
+      "VsoePrice": {
+        "kind": "column",
+        "expr": "vsoeprice",
+        "derived": true
+      },
+      "VsoeSopGroup": {
+        "kind": "column",
+        "expr": "vsoesopgroup",
+        "derived": true
+      },
+      "Weight": {
+        "kind": "column",
+        "expr": "weight",
+        "derived": true
+      },
+      "WeightUnit": {
+        "kind": "column",
+        "expr": "weightunit",
+        "derived": true
       }
-    },
-    "unsupported": [],
-    "verified": false
+    }
   }
 }
