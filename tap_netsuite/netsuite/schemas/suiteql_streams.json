@@ -696,7 +696,7 @@
       },
       "DateCreated": {
         "kind": "column",
-        "expr": "datecreated",
+        "expr": "createddate",
         "derived": true
       },
       "LastModDate": {
@@ -776,7 +776,7 @@
       },
       "DateCreated": {
         "kind": "column",
-        "expr": "datecreated",
+        "expr": "createddate",
         "derived": true
       },
       "LastModDate": {

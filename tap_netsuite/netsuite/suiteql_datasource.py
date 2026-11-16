@@ -25,6 +25,9 @@ CUSTOM_COLUMN_SAMPLE_SIZE = 200
 SUITEQL_DATETIME_FORMAT = 'YYYY-MM-DD HH24:MI:SS'
 PYTHON_DATETIME_FORMAT = '%Y-%m-%d %H:%M:%S'
 
+# Errors meaning NetSuite rejected the query itself, so a selected column can't be read.
+COLUMN_REJECTED_CODES = ('netSuite.NetSuiteQueryFailed', 'netSuite.NetSuiteInvalidQuery')
+
 STREAM_METADATA_FILENAME = 'suiteql_streams.json'
 TRANSACTION_LINE_TABLE = 'transactionline'
 TRANSACTION_LINE_ALIAS = 'tl'
@@ -204,10 +207,11 @@ class SuiteQLDataSource(DataSource):
     def _query_runs(self, query):
         """Run one row of the query to check that every selected column is readable."""
         try:
-            self.client.execute(query.render(), limit=1, retry_server_errors=False)
+            self.client.execute(query.render(), limit=1)
         except SymonException as e:
-            # Some columns exist but fail on certain accounts (400 or 500); a 403 is a real permission error.
-            if e.code in ('netSuite.NetSuiteQueryFailed', 'netSuite.NetSuiteInvalidQuery'):
+            # Some columns exist but fail on certain accounts (400, or 500 after retries);
+            # a 403 or timeout is a real error.
+            if e.code in COLUMN_REJECTED_CODES:
                 return False
             raise
         return True
@@ -561,15 +565,24 @@ class SuiteQLDataSource(DataSource):
         # Not every metadata field is a SuiteQL column (e.g. fields that aren't stored),
         # and one bad column fails the whole stream query. Check them together first,
         # then one at a time only if that fails.
-        if self._columns_selectable(table, alias, candidates):
-            return set(candidates)
-        return {column for column in candidates if self._columns_selectable(table, alias, [column])}
+        try:
+            if self._columns_selectable(table, alias, candidates):
+                return set(candidates)
+            return {column for column in candidates if self._columns_selectable(table, alias, [column])}
+        except (SymonException, TapNetSuiteException) as e:
+            LOGGER.warning('Could not check %s custom fields from metadata: %s', table, e)
+            return set()
 
     def _columns_selectable(self, table, alias, columns):
-        """Return True if SuiteQL accepts a query selecting these columns."""
+        """Return True if SuiteQL accepts a query selecting these columns.
+
+        Raises on errors that say nothing about the columns (rate limit, timeout, permissions).
+        """
         sql = f'SELECT {", ".join(f"{alias}.{column}" for column in columns)} FROM {table} {alias}'
         try:
             self.client.execute(sql, limit=1)
             return True
-        except (SymonException, TapNetSuiteException):
-            return False
+        except SymonException as e:
+            if e.code in COLUMN_REJECTED_CODES:
+                return False
+            raise

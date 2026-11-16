@@ -4,7 +4,7 @@ from unittest import mock
 import requests
 
 from tap_netsuite.netsuite import NS_OBJECT_DEFINITIONS, suiteql, suiteql_datasource
-from tap_netsuite.netsuite.exceptions import SymonException
+from tap_netsuite.netsuite.exceptions import SymonException, TapNetSuiteQuotaExceededException
 from tap_netsuite.netsuite.suiteql import SuiteQLClient, SuiteQLQuery, incremental_predicate
 from tap_netsuite.netsuite.suiteql_datasource import (
     TRANSACTION_LINE_FIELDS,
@@ -258,7 +258,13 @@ class TestCurrenciesSuiteQL(unittest.TestCase):
         self.source.client.execute.return_value = []
 
         self.assertIn('inclinfxrateupdates', self.query_sql())
-        self.assertFalse(self.source.client.execute.call_args.kwargs['retry_server_errors'])
+        self.assertNotIn('retry_server_errors', self.source.client.execute.call_args.kwargs)
+
+    def test_timeout_not_treated_as_bad_column(self):
+        self.source.client.execute.side_effect = SymonException('slow', 'netSuite.NetSuiteQueryTimeout')
+
+        with self.assertRaises(SymonException):
+            self.query_sql()
 
     def test_optional_column_dropped_when_query_fails(self):
         self.source.client.execute.side_effect = SymonException('boom', 'netSuite.NetSuiteQueryFailed')
@@ -370,6 +376,31 @@ class TestRetryDelay(unittest.TestCase):
         resp_429, resp_503 = response(429), response(503)
         resp_429.headers = resp_503.headers = {}
         self.assertGreater(suiteql._retry_delay(resp_429, 1), suiteql._retry_delay(resp_503, 1))
+
+
+class TestMetadataCustomColumns(unittest.TestCase):
+    def setUp(self):
+        self.source = SuiteQLDataSource(NS_OBJECT_DEFINITIONS, account='123')
+        self.source.client = mock.Mock()
+        self.source.client.record_field_names.return_value = ['custentity_a', 'custentity_b']
+
+    def metadata_columns(self):
+        return self.source._metadata_custom_columns('customer', 'custentity', 'c', ['customer'], set())
+
+    def test_rejected_column_dropped(self):
+        def execute(sql, limit=None):
+            if 'custentity_b' in sql:
+                raise SymonException('bad', 'netSuite.NetSuiteInvalidQuery')
+            return []
+        self.source.client.execute.side_effect = execute
+
+        self.assertEqual(self.metadata_columns(), {'custentity_a'})
+
+    def test_rate_limit_skips_metadata_columns_without_probing_each(self):
+        self.source.client.execute.side_effect = TapNetSuiteQuotaExceededException('busy')
+
+        self.assertEqual(self.metadata_columns(), set())
+        self.assertEqual(self.source.client.execute.call_count, 1)
 
 
 if __name__ == '__main__':
