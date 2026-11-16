@@ -8,7 +8,8 @@ from requests.exceptions import RequestException
 from jsonpath_ng import jsonpath, parse
 import json
 from zeep.helpers import serialize_object
-from tap_netsuite.netsuite.exceptions import SymonException
+from tap_netsuite.netsuite import AUTH_METHOD_OAUTH2
+from tap_netsuite.netsuite.exceptions import SymonException, TapNetSuiteException
 import types
 
 LOGGER = singer.get_logger()
@@ -24,14 +25,18 @@ def get_internal_name_by_name(ns, stream):
 
 
 def transform_data_hook(ns, stream):
+    # SuiteQL records are already keyed by display name; SOAP records use internal names.
+    is_oauth = ns.ns_auth_method == AUTH_METHOD_OAUTH2
+
     def pre_hook(data, typ, schema):
-        internal_name_by_property = get_internal_name_by_name(ns, stream)
+        if not is_oauth:
+            internal_name_by_property = get_internal_name_by_name(ns, stream)
         result = data
         if isinstance(data, dict):
             result = {}
             schema_properties = schema.get('properties', {})
             for _property in schema_properties:
-                prop = internal_name_by_property[_property]
+                prop = _property if is_oauth else internal_name_by_property[_property]
                 data_property = data.get(prop, None)
                 if isinstance(data_property, datetime.datetime) is True:
                     data_property = data_property.isoformat()
@@ -83,6 +88,9 @@ def sync_stream(ns, catalog_entry, state):
             raise Exception("Error syncing {}: {} Response: {}".format(
                 stream, ex, ex.response.text))
         except Exception as ex:
+            # Keep OAuth error codes intact instead of wrapping them in a generic exception.
+            if ns.ns_auth_method == AUTH_METHOD_OAUTH2 and isinstance(ex, (SymonException, TapNetSuiteException)):
+                raise
             if 'Invalid login attempt' in str(ex):
                 raise SymonException('The consumer key, consumer secret, token ID, or token secret provided is incorrect. Please check and try again.', 'netSuite.NetSuiteInvalidKey')
             raise Exception("Error syncing {}: {}".format(
@@ -108,8 +116,8 @@ def sync_records(ns, catalog_entry, state, counter):
 
     previous_max_replication_key = None
 
-    query_func = ns.query
-    query_result = query_func(ns, catalog_entry, state)
+    is_oauth = ns.ns_auth_method == AUTH_METHOD_OAUTH2
+    query_result = ns.query(catalog_entry, state)
 
     if not isinstance(query_result, types.GeneratorType):
         if query_result is not None:
@@ -121,7 +129,9 @@ def sync_records(ns, catalog_entry, state, counter):
         for rec in page:
             counter.increment()
             with Transformer(pre_hook=transform_data_hook(ns, stream)) as transformer:
-                rec = transformer.transform(serialize_object(rec), schema)
+                if not is_oauth:
+                    rec = serialize_object(rec)
+                rec = transformer.transform(rec, schema)
 
             singer.write_message(
                 singer.RecordMessage(
